@@ -103,6 +103,8 @@
       window.Dialogue.toast(muted ? '已静音（牛也不叫了）' : '已开音（牛的哞声回来了）');
     }
     if (e.key === 'f' || e.key === 'F') window.AudioSys.boom();
+    if (e.key === 'q' || e.key === 'Q') camYaw -= 0.35;
+    if (e.key === 'r' || e.key === 'R') camYaw += 0.35;
   });
   window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
   window.addEventListener('resize', function () {
@@ -110,6 +112,22 @@
     G.camera.updateProjectionMatrix();
     G.renderer.setSize(window.innerWidth, window.innerHeight);
   });
+
+  // 鼠标右键拖拽旋转视角
+  var orbitDrag = false, orbitLastX = 0;
+  G.renderer.domElement.addEventListener('mousedown', function (e) {
+    if (e.button === 2) { orbitDrag = true; orbitLastX = e.clientX; }
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (orbitDrag) {
+      camYaw += (e.clientX - orbitLastX) * 0.005;
+      orbitLastX = e.clientX;
+    }
+  });
+  window.addEventListener('mouseup', function (e) {
+    if (e.button === 2) orbitDrag = false;
+  });
+  window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   /* ---------------- 交互 ---------------- */
   function nearestInteractable() {
@@ -182,7 +200,7 @@
     wobbleTimer -= dt;
     if (wobbleTimer <= 0) {
       wobbleTimer = 3 + Math.random() * 5;
-      wobbleAmp = 0.25 + Math.random() * 0.3;
+      wobbleAmp = 0.05 + Math.random() * 0.04; // 微弱速度波动（手感优先，保留一点糙）
     }
     if (tripping > 0) {
       tripping -= dt;
@@ -191,8 +209,8 @@
     if (G.state.stand < 30) {
       tripTimer -= dt;
       if (tripTimer <= 0) {
-        tripTimer = 1.1 + Math.random() * 1.6;
-        if (Math.random() < 0.35) {
+        tripTimer = 2.5 + Math.random() * 2.5;
+        if (Math.random() < 0.12) {
           tripping = 0.7;
           tripDir = Math.random() < 0.5 ? 1 : -1;
           window.Dialogue.toast('牛生艰难，但不致命');
@@ -206,6 +224,8 @@
   /* ---------------- 主循环 ---------------- */
   var clock = new THREE.Clock();
   var facing = 0;
+  var camYaw = 0;      // 镜头朝向（鼠标右键 / Q / R 旋转）
+  var curSpeed = 0;    // 当前速度（加减速平滑）
 
   function loop() {
     requestAnimationFrame(loop);
@@ -213,28 +233,34 @@
     var t = clock.elapsedTime;
     var canMove = updatePhysics(dt, t) && !window.Dialogue.isActive() && !window.Dialogue.codexOpen();
 
-    // 移动
-    var dx = 0, dz = 0;
+    // 移动：镜头相对（W=往屏幕里走，A=屏幕左，D=屏幕右）
+    var ix = 0, iz = 0;
     if (canMove) {
-      if (keys['w'] || keys['arrowup']) dz -= 1;
-      if (keys['s'] || keys['arrowdown']) dz += 1;
-      if (keys['a'] || keys['arrowleft']) dx -= 1;
-      if (keys['d'] || keys['arrowright']) dx += 1;
+      if (keys['w'] || keys['arrowup']) iz += 1;
+      if (keys['s'] || keys['arrowdown']) iz -= 1;
+      if (keys['a'] || keys['arrowleft']) ix -= 1;
+      if (keys['d'] || keys['arrowright']) ix += 1;
     }
-    var moving = dx !== 0 || dz !== 0;
+    // 相机相对方向向量
+    var fwd = new THREE.Vector3(Math.sin(camYaw), 0, Math.cos(camYaw));
+    var rgt = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
+    var move = new THREE.Vector3().addScaledVector(fwd, iz).addScaledVector(rgt, ix);
+    var moving = move.lengthSq() > 0;
     if (moving) {
-      var len = Math.sqrt(dx * dx + dz * dz);
-      var speed = 3.4 * (1 + Math.sin(t * 0.7) * wobbleAmp); // 速度随机波动（糙）
-      if (G.state.stand >= 66) speed *= 1.25;
-      player.position.x += (dx / len) * speed * dt;
-      player.position.z += (dz / len) * speed * dt;
-      var target = Math.atan2(dx, dz);
+      move.normalize();
+      var maxSpeed = 3.4 * (1 + Math.sin(t * 0.7) * wobbleAmp); // 微弱速度波动（保留一点糙）
+      if (G.state.stand >= 66) maxSpeed *= 1.25;
+      curSpeed += (maxSpeed - curSpeed) * Math.min(1, dt * 7);   // 加速平滑
+      player.position.addScaledVector(move, curSpeed * dt);
+      var target = Math.atan2(move.x, move.z);
       var diff = target - facing;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      facing += diff * 8 * dt;
+      facing += diff * Math.min(1, dt * 10);
       player.rotation.y = facing;
       if (Math.random() < dt * 2.2) window.AudioSys.step();
+    } else {
+      curSpeed *= Math.max(0, 1 - dt * 6);                        // 松手减速
     }
     // 边界（贴图海在界外）
     player.position.x = Math.max(-B, Math.min(B, player.position.x));
@@ -262,14 +288,17 @@
       }
     });
 
-    // 相机：镜头高度 = 站立值
+    // 相机：镜头高度 = 站立值；镜头相对 camYaw 平滑跟随（不再被朝向甩来甩去）
     var camH = 0.5 + (G.state.stand / 100) * 1.75;
-    var camDist = 6.2;
-    var camX = player.position.x - Math.sin(facing) * camDist;
-    var camZ = player.position.z - Math.cos(facing) * camDist;
+    var camDist = 6.5;
+    var camX = player.position.x - Math.sin(camYaw) * camDist;
+    var camZ = player.position.z - Math.cos(camYaw) * camDist;
     camX += Math.sin(t * 3.1) * 0.02; camZ += Math.cos(t * 2.7) * 0.02; // 手持抖动
+    var lerpK = 1 - Math.pow(0.0001, dt);
+    G.camera.position.x += (camX - G.camera.position.x) * lerpK;
+    G.camera.position.y += (camH - G.camera.position.y) * lerpK;
+    G.camera.position.z += (camZ - G.camera.position.z) * lerpK;
     var roll = tripping > 0 ? tripDir * 0.5 * (tripping / 0.7) : 0;
-    G.camera.position.set(camX, camH, camZ);
     G.camera.lookAt(player.position.x, 1.0, player.position.z);
     G.camera.rotation.z += roll;
 
