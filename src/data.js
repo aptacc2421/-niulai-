@@ -5,11 +5,13 @@
 (function () {
   'use strict';
 
-  // ---- 语录卡（M1 原型 3 张；完整版 36 张）----
+  // ---- 语录卡（M2a 后 5 张；完整版 36 张）----
   var CARDS = [
     { id: 'shoucuo',   name: '手搓五年',  type: '暖心', text: '妈妈说：画得再歪也是画，坚持五年就是传奇。', stand: 8 },
     { id: 'mamadongni',name: '妈妈懂你',  type: '暖心', text: '孩子，妈妈不懂动画，妈妈懂你。', stand: 8 },
-    { id: 'jiangla',   name: '姜还是老的辣', type: '玄学', text: '哈气都能飘到屋顶，你怕什么站起来。', stand: 8 }
+    { id: 'jiangla',   name: '姜还是老的辣', type: '玄学', text: '哈气都能飘到屋顶，你怕什么站起来。', stand: 8 },
+    { id: 'gumin',     name: '别怕站不起来', type: '暖心', text: '别怕站不起来，大 A 都等了这么多年了，不差这一会儿。', stand: 8 },
+    { id: 'jiucai',    name: '牛走了，韭菜还在', type: '毒鸡汤', text: '他们说牛来了，我冲进去，然后牛走了。', stand: 3 }
   ];
 
   // ---- 错别字池（每 ~18 句随机出现 1 个，粗糙美学）----
@@ -78,12 +80,33 @@
       seed: 44, colors: { body: 0x9a9a92, patch: 0xe8e2d8 },
       pos: [-6, 4], rot: 1.2, scale: 1.0,
       lines: MAODIE_LINES
+    },
+    {
+      id: 'gumin', name: '股民牛', kind: 'cow', upright: true, crawl: false,
+      seed: 55, colors: { body: 0xd8c8a0, patch: 0x8a5a2a },
+      pos: [40, -6], rot: 0.9, scale: 1.0,
+      lines: [
+        { who: 'player', text: '大哥，这些柱子都是干什么的？' },
+        { who: 'gumin', text: 'K 线。红的是涨，绿的是跌。我盯着它们看了十年，柱子都认识我了。' },
+        { who: 'player', text: '那……牛市来了吗？' },
+        { who: 'gumin', text: '别怕站不起来，大 A 都等了这么多年了，不差这一会儿。', card: 'gumin', stand: 8 }
+      ]
+    },
+    {
+      id: 'jiucai', name: '韭菜牛', kind: 'cow', upright: false, crawl: true,
+      seed: 66, colors: { body: 0x4a7a4a, patch: 0x9a3a2a },
+      pos: [50, 6], rot: -1.0, scale: 0.95,
+      lines: [
+        { who: 'player', text: '你怎么也趴着？' },
+        { who: 'jiucai', text: '韭菜嘛……都是趴着被割的。他们说牛来了，我冲进去，然后牛走了。', card: 'jiucai', stand: 3 }
+      ]
     }
   ];
 
   // ---- 草票 ----
   var TICKET_SPOTS = [
-    [-4, -2], [-1, 3], [5, -1], [7, 5], [-7, -3]
+    [-4, -2], [-1, 3], [5, -1], [7, 5], [-7, -3],
+    [44, -4], [52, 8], [38, 8]
   ];
 
   // ---- 世界配置 ----

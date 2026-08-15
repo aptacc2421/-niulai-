@@ -32,7 +32,9 @@
     daoyan: '🐂',
     mama: '🐄',
     laoniu: '🐮',
-    maodie: '🌫️'
+    maodie: '🌫️',
+    gumin: '📈',
+    jiucai: '🥬'
   };
   var haqiPuffs = [];
 

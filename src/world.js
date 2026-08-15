@@ -153,6 +153,7 @@
       var gx = (Math.random() * 2 - 1) * (B + 14);
       var gz = (Math.random() * 2 - 1) * (B + 14);
       if (Math.abs(gx) < B && Math.abs(gz) < B && Math.random() < 0.4) continue; // 镇内稀疏些
+      if (gx > 28 && gx < 64 && gz > -15 && gz < 15) continue; // K 线交易场区域不留草
       var blade = new THREE.Mesh(new THREE.BoxGeometry(0.09, W.grassHeight, 0.09), grassMat);
       blade.position.set(gx, W.grassHeight / 2, gz);
       blade.userData.phase = Math.random() * 6.28;
@@ -200,21 +201,27 @@
     scene.add(special);
     makeSign(scene, ['第 7705 棵草', '（首周票房纪念）'], [3.5, 5], 0, { w: 2.2, h: 1.6, bg: '#5a4a1a' });
 
-    // ---- 贴图海告示（地图边界） ----
-    makeSign(scene, ['这里本来是悬崖，', '导演不会做悬崖'], [B + 2, 0], Math.PI / 2, { w: 2.6, h: 1.6, bg: '#1a3a4a' });
+    // ---- 贴图海告示（地图边界，移到西边） ----
+    makeSign(scene, ['这里本来是悬崖，', '导演不会做悬崖'], [-B - 2, 0], Math.PI / 2, { w: 2.6, h: 1.6, bg: '#1a3a4a' });
 
-    // ---- 围栏桩 ----
+    // ---- 围栏桩（东边留门，通向 K 线交易场） ----
     var fenceMat = new THREE.MeshLambertMaterial({ color: 0x7a5a3a });
     for (var fx = -B; fx <= B; fx += 3.2) {
       [-B, B].forEach(function (fz) {
         var p = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.1, 0.18), fenceMat);
         p.position.set(fx, 0.55, fz);
         scene.add(p);
+        if (fz === B && fx > -4.5 && fx < 4.5) return; // 东门
         var p2 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.1, 0.18), fenceMat);
         p2.position.set(fz, 0.55, fx);
         scene.add(p2);
       });
     }
+
+    // ---- K 线交易场 ----
+    buildTradingGround(scene);
+    // 东门口的方向牌
+    makeSign(scene, ['→ K 线交易场', '（红涨绿跌，绿多红少）'], [B + 3.5, 0], -Math.PI / 2, { w: 2.6, h: 1.6, bg: '#4a3a2a' });
 
     // ---- 草票（旋转发光） ----
     var ticketMat = new THREE.MeshLambertMaterial({ color: 0xffd970, emissive: 0x7a5a10 });
@@ -243,6 +250,78 @@
     };
 
     return out;
+  }
+
+  /* ---------- K 线交易场：地形本身就是 K 线图（红涨绿跌，绿多红少） ---------- */
+  function buildTradingGround(scene) {
+    // 地块
+    var floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(36, 30),
+      new THREE.MeshLambertMaterial({ color: 0x8f9a86 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(46, 0.015, 0);
+    scene.add(floor);
+
+    // 从东门到交易场的小路
+    var pathMat = new THREE.MeshLambertMaterial({ color: 0xa08050 });
+    for (var pi = 0; pi < 2; pi++) {
+      var seg = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 3.4), pathMat);
+      seg.rotation.x = -Math.PI / 2;
+      seg.position.set(27.2 + pi * 2.2, 0.02 + pi * 0.001, 0);
+      scene.add(seg);
+    }
+
+    // K 线柱子
+    var redMat = new THREE.MeshLambertMaterial({ color: 0xd04a3a });
+    var greenMat = new THREE.MeshLambertMaterial({ color: 0x3a9e5a });
+    var wickMat = new THREE.MeshLambertMaterial({ color: 0x6a5a4a });
+    for (var r = 0; r < 6; r++) {
+      for (var c = 0; c < 6; c++) {
+        var h = 1.2 + Math.random() * 6;
+        var m = Math.random() < 0.35 ? redMat : greenMat; // 65% 绿（绿多红少梗）
+        var px = 34 + c * 4.4, pz = -11 + r * 4.2;
+        if (Math.abs(px - 46) < 3 && Math.abs(pz) < 3) continue; // 给大阳线柱留位
+        var pillar = new THREE.Mesh(new THREE.BoxGeometry(1.1, h, 1.1), m);
+        pillar.position.set(px, h / 2, pz);
+        scene.add(pillar);
+        if (Math.random() < 0.4) {
+          var wick = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), wickMat);
+          wick.position.set(px, h + 0.35, pz);
+          scene.add(wick);
+        }
+      }
+    }
+
+    // 大阳线柱（最高点——奶龙原坑位）
+    var big = new THREE.Mesh(new THREE.BoxGeometry(2.2, 9, 2.2), redMat);
+    big.position.set(46, 4.5, 0);
+    scene.add(big);
+    var wickBig = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.6, 0.3), wickMat);
+    wickBig.position.set(46, 9.8, 0);
+    scene.add(wickBig);
+    var platform = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.25, 3.4),
+      new THREE.MeshLambertMaterial({ color: 0x6a4a28 }));
+    platform.position.set(46, 10.6, 0);
+    scene.add(platform);
+    var naiLongSign = new THREE.Mesh(
+      new THREE.BoxGeometry(2.6, 1.3, 0.12),
+      new THREE.MeshBasicMaterial({ map: signTexture(['奶龙休假', '柱子照旧'], 256, 96, '#8a3a2a', '#ffe89a') })
+    );
+    naiLongSign.position.set(46, 11.2, 0);
+    scene.add(naiLongSign);
+
+    // 刻字柱子（承载了太多人的梦想与眼泪）
+    var carved = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 6, 1.2),
+      new THREE.MeshLambertMaterial({ map: signTexture(['这根柱子承载了', '太多人的梦想与眼泪'], 128, 96, '#2a4a2a', '#cfd8b0') })
+    );
+    carved.position.set(38, 3, -11);
+    scene.add(carved);
+
+    // 交易场告示牌
+    makeSign(scene, ['红涨绿跌', '——绿多红少，请勿参照反向牛'], [56, -9], -0.6, { w: 2.8, h: 1.6, bg: '#3a2a1a' });
+    makeSign(scene, ['本场交易', '亏了不许哭'], [33, 10], 0.7, { w: 2.6, h: 1.6, bg: '#2a3a2a' });
   }
 
   window.buildWorld = buildWorld;
