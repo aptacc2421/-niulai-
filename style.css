@@ -1,0 +1,54 @@
+/* 直立牛平原 M1 —— 手搓风格 UI */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a12; }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; user-select: none; }
+canvas { display: block; }
+.hidden { display: none !important; }
+
+/* ---------- 加载屏 ---------- */
+#loading { position: fixed; inset: 0; background: #0a0a12; display: flex; align-items: center; justify-content: center; z-index: 100; }
+.loading-box { text-align: center; color: #e8e3c8; }
+.loading-title { font-size: 34px; letter-spacing: 6px; margin-bottom: 8px; color: #ffd970; }
+.loading-sub { font-size: 12px; color: #8a8570; margin-bottom: 22px; }
+.loading-bar { width: 240px; height: 14px; border: 2px solid #e8e3c8; margin: 0 auto; transform: rotate(-1deg); background: #1c1c28; }
+#loading-fill { height: 100%; width: 0%; background: #ffd970; transition: width .15s steps(5); }
+#loading-text { margin-top: 10px; font-size: 13px; color: #b8b29a; }
+
+/* ---------- 标题屏 ---------- */
+#title { position: fixed; inset: 0; background: rgba(8, 10, 18, .82); display: flex; align-items: center; justify-content: center; z-index: 90; }
+.title-box { text-align: center; color: #e8e3c8; max-width: 520px; padding: 30px; }
+.title-main { font-size: 52px; letter-spacing: 10px; color: #ffd970; text-shadow: 3px 3px 0 #7a5a10; transform: rotate(-1.2deg); margin-bottom: 14px; }
+.title-sub { font-size: 15px; line-height: 1.9; color: #cfc9ae; margin-bottom: 20px; }
+.title-controls { font-size: 13px; line-height: 2; color: #9a9478; text-align: left; display: inline-block; margin-bottom: 24px; }
+#start-btn { font-size: 20px; padding: 12px 44px; background: #ffd970; color: #3a2a08; border: 3px solid #3a2a08; cursor: pointer; transform: rotate(-.8deg); letter-spacing: 4px; font-weight: bold; }
+#start-btn:hover { background: #ffe89a; transform: rotate(.6deg) scale(1.03); }
+.title-note { margin-top: 18px; font-size: 12px; color: #6e6954; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+.hud-left { position: absolute; top: 16px; left: 16px; }
+.hud-right { position: absolute; top: 16px; right: 16px; text-align: right; }
+.hud-label { color: #e8e3c8; font-size: 14px; text-shadow: 1px 1px 0 #000; margin-bottom: 4px; }
+.hud-label.small { font-size: 12px; color: #b8b29a; }
+.stand-bar { width: 220px; height: 12px; border: 2px solid #e8e3c8; background: rgba(0,0,0,.45); transform: rotate(-1deg); }
+#stand-fill { height: 100%; width: 10%; background: linear-gradient(90deg, #c98a3a, #ffd970); transition: width .6s; }
+#prompt { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); background: rgba(0,0,0,.55); color: #ffe89a; padding: 8px 16px; font-size: 14px; border: 2px solid #ffd970; }
+#toast { position: absolute; top: 76px; left: 50%; transform: translateX(-50%); color: #ffe89a; font-size: 14px; text-shadow: 1px 1px 0 #000; opacity: 0; transition: opacity .3s; text-align: center; white-space: nowrap; }
+
+/* ---------- 对话 ---------- */
+#dialogue { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(720px, 92vw); background: rgba(10, 12, 22, .9); border: 3px solid #e8e3c8; padding: 14px 18px; display: flex; gap: 14px; z-index: 60; transform: translateX(-50%) rotate(-.3deg); }
+.dlg-portrait { width: 64px; height: 64px; border: 2px solid #8a8570; background: #1c1c28; display: flex; align-items: center; justify-content: center; font-size: 36px; flex-shrink: 0; }
+.dlg-body { flex: 1; }
+.dlg-name { color: #ffd970; font-size: 14px; margin-bottom: 6px; letter-spacing: 2px; }
+.dlg-text { color: #e8e3c8; font-size: 15px; line-height: 1.7; min-height: 44px; }
+.dlg-hint { color: #6e6954; font-size: 12px; align-self: flex-end; white-space: nowrap; }
+
+/* ---------- 图鉴 ---------- */
+#codex { position: fixed; inset: 0; background: rgba(8, 10, 18, .88); z-index: 80; padding: 40px 20px; overflow-y: auto; }
+.codex-title { text-align: center; color: #ffd970; font-size: 26px; letter-spacing: 6px; margin-bottom: 24px; }
+.codex-hint { text-align: center; color: #6e6954; font-size: 12px; margin-top: 20px; }
+.card-item { max-width: 560px; margin: 0 auto 12px; border: 2px solid #8a8570; padding: 12px 16px; background: rgba(28, 28, 40, .8); }
+.card-item .cn { color: #ffd970; font-size: 15px; font-weight: bold; }
+.card-item .ct { color: #9a9478; font-size: 12px; margin-left: 8px; }
+.card-item .cx { color: #cfc9ae; font-size: 14px; margin-top: 6px; line-height: 1.6; }
+.card-item.empty { color: #6e6954; text-align: center; border-style: dashed; }

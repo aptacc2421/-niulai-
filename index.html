@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>直立牛平原 · M1 原型（《牛来》粉丝二创）</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐮</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 加载屏 -->
+  <div id="loading">
+    <div class="loading-box">
+      <div class="loading-title">直立牛平原</div>
+      <div class="loading-sub">《牛来》粉丝二创 · 非官方 · 不商用</div>
+      <div class="loading-bar"><div id="loading-fill"></div></div>
+      <div id="loading-text">正在加载牛… 5%</div>
+    </div>
+  </div>
+
+  <!-- 标题屏 -->
+  <div id="title" class="hidden">
+    <div class="title-box">
+      <div class="title-main">直立牛平原</div>
+      <div class="title-sub">你是一头生下来就站不起来的牛。<br>平原上所有的牛都直立行走，只有你趴着。</div>
+      <div class="title-controls">
+        <div>WASD / 方向键 — 移动（爬）</div>
+        <div>E — 对话 / 交互</div>
+        <div>Tab — 语录图鉴</div>
+        <div>M — 导演模式（线稿）</div>
+        <div>F — 哞一声 · K — 静音</div>
+      </div>
+      <button id="start-btn">开始（手搓）</button>
+      <div class="title-note">M1 原型：牛棚镇 · 4 位牛 + 1 只老猫 · 听鸡汤，攒站立值</div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-left">
+      <div class="hud-label">站起来还需要 <span id="stand-need">90</span> 点</div>
+      <div class="stand-bar"><div id="stand-fill"></div></div>
+      <div class="hud-label small" id="stand-tip">趴着走，草比牛高</div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-label">语录卡 <span id="card-count">0</span>/3</div>
+      <div class="hud-label small">草票 <span id="grass-ticket">0</span></div>
+    </div>
+    <div id="prompt" class="hidden">按 <b>E</b> 对话</div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- 对话 -->
+  <div id="dialogue" class="hidden">
+    <div class="dlg-portrait" id="dlg-portrait">🐮</div>
+    <div class="dlg-body">
+      <div class="dlg-name" id="dlg-name">导演牛</div>
+      <div class="dlg-text" id="dlg-text"></div>
+    </div>
+    <div class="dlg-hint" id="dlg-hint">按 E / 空格 继续</div>
+  </div>
+
+  <!-- 图鉴 -->
+  <div id="codex" class="hidden">
+    <div class="codex-title">语录图鉴（M1 原型）</div>
+    <div id="codex-list"></div>
+    <div class="codex-hint">按 Tab 关闭</div>
+  </div>
+
+  <script src="lib/three.min.js"></script>
+  <script src="src/data.js"></script>
+  <script src="src/audio.js"></script>
+  <script src="src/cow.js"></script>
+  <script src="src/world.js"></script>
+  <script src="src/dialogue.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
