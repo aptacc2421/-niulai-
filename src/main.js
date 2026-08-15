@@ -15,7 +15,7 @@
 
   var G = {
     scene: null, camera: null, renderer: null,
-    state: { stand: 10, cards: [], tickets: 0, shedSnake: 0, stubs: [], patternSeen: [], saveJoked: false },
+    state: { stand: 10, cards: [], tickets: 0, shedSnake: 0, stubs: [], patternSeen: [], milk: 0, xiugouTalked: false, seatFixed: false, saveJoked: false },
     npcMeshes: {}
   };
   window.Game = G;
@@ -34,6 +34,9 @@
     G.state.stubs = G.state.stubs || [];
     G.state.patternSeen = G.state.patternSeen || [];
     G.state.shedSnake = G.state.shedSnake || 0;
+    G.state.milk = G.state.milk || 0;
+    G.state.xiugouTalked = G.state.xiugouTalked || false;
+    G.state.seatFixed = G.state.seatFixed || false;
   }
   function save() {
     try {
@@ -110,6 +113,39 @@
   G.snake = snake;
   G.snakeState = snakeState;
 
+  /* ---------------- 奇奇怪怪生物团（M2d） ---------------- */
+  var creatures = [];
+  window.Data.CREATURES.forEach(function (def) {
+    var cm = window.makeCreature(def.kind, def.pos[0] * 7 + def.pos[1] * 13);
+    cm.position.set(def.pos[0], 0, def.pos[1]);
+    G.scene.add(cm);
+    if (def.id === 'haqimiao') cm.visible = false; // 隐藏怪
+    creatures.push({ def: def, mesh: cm });
+  });
+  G.creatures = creatures;
+  var hiddenRevealed = false;
+  var naiwaFollower = false;
+  G.naiwaFollower = function () { return naiwaFollower; };
+  var shakeT = 0;
+  // 隐藏怪解锁检测：用 setInterval（rAF 被节流/后台标签页时依然生效）
+  setInterval(function () {
+    if (hiddenRevealed) return;
+    var allCreatures = true;
+    window.Data.CREATURE_CARD_IDS.forEach(function (cid) {
+      if (G.state.cards.indexOf(cid) < 0) allCreatures = false;
+    });
+    if (allCreatures) {
+      hiddenRevealed = true;
+      creatures.forEach(function (cr) {
+        if (cr.def.id === 'haqimiao') {
+          cr.mesh.visible = true;
+          window.AudioSys.haqi();
+          window.Dialogue.toast('网线管里传来一阵哈气声……一个圆滚滚的身影钻了出来');
+        }
+      });
+    }
+  }, 400);
+
   /* ---------------- 输入 ---------------- */
   var keys = {};
   var codexOpen = false;
@@ -166,7 +202,20 @@
     if (world.machinePos && world.machinePos.distanceTo(player.position) < 2.4) {
       return { kind: 'machine', ref: null };
     }
+    // 修勾的坏座位（M2d）
+    if (G.state.xiugouTalked && !G.state.seatFixed && world.brokenSeat &&
+        world.brokenSeat.pos.distanceTo(player.position) < 1.9) {
+      return { kind: 'seat', ref: null };
+    }
     var best = null, bestD = 1.9;
+    // 生物团（用 XZ 距离，屋顶的猪猪侠也能对话）
+    creatures.forEach(function (cr) {
+      if (!cr.mesh.visible) return;
+      var dx = cr.mesh.position.x - player.position.x;
+      var dz = cr.mesh.position.z - player.position.z;
+      var d = Math.sqrt(dx * dx + dz * dz);
+      if (d < bestD) { bestD = d; best = { kind: 'creature', ref: cr }; }
+    });
     npcs.forEach(function (n) {
       var d = n.mesh.position.distanceTo(player.position);
       if (d < bestD) { bestD = d; best = { kind: 'npc', ref: n }; }
@@ -178,6 +227,72 @@
     return best;
   }
 
+  // 生物对话（特殊逻辑：修勾修座 / 奶娃跟班 / 尖叫鸡特效）
+  function buildCreatureLines(cr) {
+    var card = null;
+    window.Data.CARDS.forEach(function (c) { if (c.id === cr.def.card) card = c; });
+    var cc = cr.def.id;
+    var cardLine = function (extra) {
+      return { who: cc, text: (extra || card.text), card: cr.def.card, stand: card ? card.stand : 0 };
+    };
+    if (cc === 'xiugou') {
+      if (G.state.seatFixed) return [
+        { who: 'player', text: '座位修好了！' },
+        cardLine('呜……谢谢你把我的座位修好了。')
+      ];
+      return [
+        { who: 'player', text: '小狗，你怎么哭成这样？' },
+        { who: 'xiugou', text: '呜……我的座位坏了，就在那边，第三个，歪的那个……' }
+      ];
+    }
+    if (cc === 'naiwa') {
+      return [
+        { who: 'player', text: '你怎么笑成这样？' },
+        cardLine(naiwaFollower ? '哈哈哈哈……我在你后面笑了好久了！' : card.text)
+      ];
+    }
+    if (cc === 'haqimiao') {
+      return [
+        { who: 'player', text: '（网线管里传来哈气声）……你是谁？' },
+        { who: 'haqimiao', haqi: true, text: '哈——……' },
+        { who: 'player', text: '……' },
+        cardLine('哈——（它跟耄耋学会了）')
+      ];
+    }
+    if (cc === 'jianjiaoji') return [
+      { who: 'player', text: '这鸡……真的能按吗？' },
+      cardLine('（按钮就在嘴上）')
+    ];
+    if (cc === 'kapybara') return [
+      { who: 'player', text: '你泡在水里不冷吗？' },
+      cardLine()
+    ];
+    if (cc === 'caigou') return [
+      { who: 'player', text: '你……是棵菜？' },
+      cardLine()
+    ];
+    if (cc === 'malou') return [
+      { who: 'player', text: '你搬的砖是给谁的？' },
+      cardLine()
+    ];
+    if (cc === 'lvouyu') return [
+      { who: 'player', text: '你的头套能摘下来吗？' },
+      cardLine()
+    ];
+    if (cc === 'zhuzhu') return [
+      { who: 'player', text: '猪猪侠？你怎么在这？' },
+      cardLine()
+    ];
+    if (cc === 'huahua') return [
+      { who: 'player', text: '花花！看这边！' },
+      cardLine()
+    ];
+    return [
+      { who: 'player', text: '……你好？' },
+      cardLine()
+    ];
+  }
+
   function interact() {
     if (window.Dialogue.isActive()) return;
     var it = nearestInteractable();
@@ -186,7 +301,40 @@
       window.TicketUI.open();
       return;
     }
-    var ref = it.ref;
+    if (it.kind === 'seat') {
+      // 修好修勾的座位
+      G.state.seatFixed = true;
+      window.AudioSys.ding();
+      window.Dialogue.toast('你把歪掉的座位掰正了（修好了）');
+      save();
+      return;
+    }
+    if (it.kind === 'creature') {
+      var cr = it.ref;
+      if (cr.def.id === 'xiugou') G.state.xiugouTalked = true;
+      // 尖叫鸡：按下去 → 全屏鸡叫 + 周围牛弹跳 + 镜头抖
+      if (cr.def.id === 'jianjiaoji') {
+        window.AudioSys.scream();
+        shakeT = 0.5;
+        window.Dialogue.toast('啊————！！！（周围牛全部弹跳 1 米）');
+        [npcs, wanderers, creatures].forEach(function (list) {
+          list.forEach(function (o) {
+            if (o.mesh.position.distanceTo(player.position) < 8) {
+              o.mesh.userData.bounceT = 0.5;
+            }
+          });
+        });
+      }
+      // 奶娃：有 5 瓶奶 → 跟班
+      if (cr.def.id === 'naiwa' && G.state.milk >= 5 && !naiwaFollower) {
+        G.state.milk -= 5;
+        naiwaFollower = true;
+        window.Dialogue.toast('奶娃喝饱了，决定跟着你！（成就：带娃上班）');
+      }
+      ref = { def: { id: cr.def.id, name: cr.def.name, lines: buildCreatureLines(cr) }, mesh: cr.mesh };
+    } else {
+      var ref = it.ref;
+    }
     if (it.kind === 'npc' && !ref.def.lines) {
       // 路人牛随机语录
       var lines = window.Data.PASSERBY_LINES.map(function (txt) { return { who: 'passerby', whoName: '路人牛', text: txt }; });
@@ -251,6 +399,16 @@
   var wobbleTimer = 2 + Math.random() * 5;
   var wobbleAmp = 0;
   var tripTimer = 0, tripping = 0, tripDir = 1;
+
+  // 尖叫鸡把周围牛弹起来（1 米）
+  function bounceEase(mesh, dt) {
+    if (mesh.userData.bounceT > 0) {
+      mesh.userData.bounceT -= dt;
+      var k = Math.max(0, mesh.userData.bounceT) / 0.5;
+      mesh.position.y = Math.sin((1 - k) * Math.PI) * 1.2;
+      if (mesh.userData.bounceT <= 0) mesh.position.y = 0;
+    }
+  }
 
   function updatePhysics(dt, t) {
     wobbleTimer -= dt;
@@ -326,10 +484,27 @@
     player.userData.update(t, moving, 2.2);
     npcs.forEach(function (n) {
       n.mesh.userData.update(t, false, 0);
+      bounceEase(n.mesh, dt);
     });
-    wanderers.forEach(function (w) { w.mesh.userData.update(t, true, 1.4); });
+    wanderers.forEach(function (w) {
+      w.mesh.userData.update(t, true, 1.4);
+      bounceEase(w.mesh, dt);
+    });
+    // 生物团：动画 / 奶娃跟班 / 弹跳
+    creatures.forEach(function (cr) {
+      if (naiwaFollower && cr.def.id === 'naiwa') {
+        var target = new THREE.Vector3(player.position.x - 1.1, 0, player.position.z + 0.9);
+        cr.mesh.position.lerp(target, 1 - Math.pow(0.001, dt));
+        cr.mesh.rotation.y = Math.atan2(player.position.x - cr.mesh.position.x, player.position.z - cr.mesh.position.z);
+        cr.mesh.userData.update(t, 'follow');
+      } else {
+        cr.mesh.userData.update(t);
+      }
+      bounceEase(cr.mesh, dt);
+    });
     updatePasserby(dt);
     updateSnake(dt, t);
+    if (shakeT > 0) shakeT -= dt;
     // 草票拾取
     world.tickets.forEach(function (tk) {
       if (tk.userData.taken) return;
@@ -343,6 +518,21 @@
         save();
       }
     });
+    // 奶瓶拾取（喂奶娃）
+    if (world.milkBottles) {
+      world.milkBottles.forEach(function (mb) {
+        if (mb.taken) return;
+        if (mb.bottle.position.distanceTo(player.position) < 1.15) {
+          mb.taken = true;
+          mb.bottle.visible = false;
+          mb.cap.visible = false;
+          G.state.milk = (G.state.milk || 0) + 1;
+          window.AudioSys.ding();
+          window.Dialogue.toast('奶瓶 +1（给奶娃喝，还差 ' + Math.max(0, 5 - G.state.milk) + ' 瓶）');
+          save();
+        }
+      });
+    }
     // 蛇蜕皮拾取（拿给玄学牛换卡）
     if (world.shed && !world.shed.userData.taken) {
       if (world.shed.position.distanceTo(player.position) < 1.15) {
@@ -361,6 +551,7 @@
     var camX = player.position.x - Math.sin(camYaw) * camDist;
     var camZ = player.position.z - Math.cos(camYaw) * camDist;
     camX += Math.sin(t * 3.1) * 0.02; camZ += Math.cos(t * 2.7) * 0.02; // 手持抖动
+    if (shakeT > 0) { camX += (Math.random() - 0.5) * 0.5; camZ += (Math.random() - 0.5) * 0.5; } // 尖叫鸡镜头抖
     var lerpK = 1 - Math.pow(0.0001, dt);
     G.camera.position.x += (camX - G.camera.position.x) * lerpK;
     G.camera.position.y += (camH - G.camera.position.y) * lerpK;
@@ -375,8 +566,10 @@
       if (it) {
         if (it.kind === 'machine') {
           promptEl.innerHTML = '按 <b>E</b> 购票（5 草票/张）';
+        } else if (it.kind === 'seat') {
+          promptEl.innerHTML = '按 <b>E</b> 修座位（掰正它）';
         } else {
-          var nm = it.ref.mesh.userData && it.ref.def ? it.ref.def.name : '路人牛';
+          var nm = it.ref.def ? (it.ref.def.name || '路人牛') : '路人牛';
           promptEl.innerHTML = '按 <b>E</b> 与 ' + nm + ' 对话';
         }
         promptEl.classList.remove('hidden');

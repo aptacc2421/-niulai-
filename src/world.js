@@ -249,6 +249,8 @@
     buildTradingGround(scene);
     // ---- 电影院废墟（M2c 选座购票） ----
     buildCinema(scene, out);
+    // ---- 生物团场景件（M2d） ----
+    buildCreatureScenery(scene, out);
     // 东门口的方向牌
     makeSign(scene, ['→ K 线交易场', '（红涨绿跌，绿多红少）'], [B + 3.5, 0], -Math.PI / 2, { w: 2.6, h: 1.6, bg: '#4a3a2a' });
 
@@ -432,6 +434,44 @@
 
     out.machine = machine;
     out.machinePos = new THREE.Vector3(window.Data.WORLD.machinePos[0], 0, window.Data.WORLD.machinePos[1]);
+
+    // 修勾的坏座位（前排行 c=4，歪的那个）
+    var broken = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.55),
+      new THREE.MeshLambertMaterial({ color: 0x5a3a2a }));
+    broken.position.set(CX + 0.5, 0.45, CZ + 1.5);
+    broken.rotation.z = 0.5;
+    scene.add(broken);
+    out.brokenSeat = { mesh: broken, pos: new THREE.Vector3(CX + 0.5, 0, CZ + 1.5) };
+  }
+
+  /* ---------- M2d 生物团场景件：水池 / 奶瓶 / 请勿按压牌 ---------- */
+  function buildCreatureScenery(scene, out) {
+    // 卡皮巴拉的水池（交易场南边）
+    var pool = new THREE.Mesh(new THREE.PlaneGeometry(4, 4),
+      new THREE.MeshLambertMaterial({ color: 0x4a9ec8 }));
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(54, 0.03, 6);
+    scene.add(pool);
+    var rimMat = new THREE.MeshLambertMaterial({ color: 0x8a8578 });
+    [[54 - 2, 6], [54 + 2, 6], [54, 6 - 2], [54, 6 + 2]].forEach(function (p) {
+      var rim = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 0.3), rimMat);
+      rim.position.set(p[0], 0.06, p[1]);
+      scene.add(rim);
+    });
+    // 奶瓶（喂奶娃）
+    var milkMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    window.Data.MILK_SPOTS.forEach(function (sp) {
+      var bottle = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.3, 0.16), milkMat);
+      bottle.position.set(sp[0], 0.5, sp[1]);
+      var cap = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.1),
+        new THREE.MeshBasicMaterial({ color: 0x5a9ee8 }));
+      cap.position.set(sp[0], 0.7, sp[1]);
+      scene.add(bottle); scene.add(cap);
+      out.milkBottles = out.milkBottles || [];
+      out.milkBottles.push({ bottle: bottle, cap: cap, taken: false });
+    });
+    // 尖叫鸡的"请勿按压"牌
+    makeSign(scene, ['请勿按压', '（按了会响）'], [2.4, 9.5], -0.3, { w: 2.4, h: 1.5, bg: '#5a1a1a' });
   }
 
   window.buildWorld = buildWorld;

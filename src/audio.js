@@ -164,6 +164,23 @@
     } catch (e) {}
   }
 
+  // 尖叫鸡：方波"啊————！！！"
+  function sfxScream() {
+    if (muted) return;
+    try {
+      var c = ac(), t = c.currentTime;
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(880, t);
+      o.frequency.exponentialRampToValueAtTime(1400, t + 0.2);
+      o.frequency.exponentialRampToValueAtTime(700, t + 0.5);
+      var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+      env(g, t, 0.01, 0.35, 0.55);
+      o.connect(lp); lp.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t + 0.6);
+    } catch (e) {}
+  }
+
   window.AudioSys = {
     init: function () { ac(); startBgm(); },
     boom: sfxBoom,
@@ -172,6 +189,7 @@
     step: sfxStep,
     momCry: sfxMomCry,
     bigStep: sfxBigStep,
+    scream: sfxScream,
     toggleMute: toggleMute,
     isMuted: function () { return muted; }
   };
