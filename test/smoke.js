@@ -78,6 +78,10 @@ function serve() {
     results.daoyan = await page.evaluate(() => window.Game.state.cards.length >= 1);
     await talkWith(-6.2, 4.5);                       // 耄耋（哈气）
     results.maodie = await page.evaluate(() => window.Game.state.cards.length >= 2);
+    await talkWith(39.8, -5.5);                      // 股民牛（K 线交易场）
+    results.gumin = await page.evaluate(() => window.Game.state.cards.length >= 3);
+    await talkWith(49.8, 6.5);                       // 韭菜牛（K 线交易场）
+    results.jiucai = await page.evaluate(() => window.Game.state.cards.length >= 4);
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
 
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });

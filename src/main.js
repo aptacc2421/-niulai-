@@ -76,11 +76,21 @@
     npcs.push({ def: def, mesh: mesh, talked: false });
   });
 
-  // 路人牛（游荡，可反复对话）
-  var passerby = window.makeCow({ upright: true, crawl: false, seed: 99, colors: { body: 0x9a8a7a, patch: 0x6a5a4a } });
-  passerby.position.set(-3, 0, -5);
-  G.scene.add(passerby);
-  var passerbyState = { target: null, wait: 0 };
+  // 游荡牛（可反复对话）：镇上 1 头 + K 线交易场 1 头
+  var wanderers = [
+    { mesh: null, home: [-3, -5], bounds: [-B, B, -B, B] },
+    { mesh: null, home: [42, 2], bounds: [30, 60, -14, 14] }
+  ];
+  wanderers.forEach(function (w) {
+    w.mesh = window.makeCow({
+      upright: true, crawl: false,
+      seed: 99 + Math.abs(w.home[0]),
+      colors: w.home[0] > 0 ? { body: 0xb8a888, patch: 0x7a6a5a } : { body: 0x9a8a7a, patch: 0x6a5a4a }
+    });
+    w.mesh.position.set(w.home[0], 0, w.home[1]);
+    w.state = { target: null, wait: 0 };
+    G.scene.add(w.mesh);
+  });
 
   /* ---------------- 输入 ---------------- */
   var keys = {};
@@ -136,8 +146,10 @@
       var d = n.mesh.position.distanceTo(player.position);
       if (d < bestD) { bestD = d; best = { kind: 'npc', ref: n }; }
     });
-    var dp = passerby.position.distanceTo(player.position);
-    if (dp < bestD) best = { kind: 'npc', ref: { def: { name: '路人牛', lines: null }, mesh: passerby, talked: true } };
+    wanderers.forEach(function (w) {
+      var d = w.mesh.position.distanceTo(player.position);
+      if (d < bestD) { bestD = d; best = { kind: 'npc', ref: { def: { name: '路人牛', lines: null }, mesh: w.mesh } }; }
+    });
     return best;
   }
 
@@ -262,8 +274,8 @@
     } else {
       curSpeed *= Math.max(0, 1 - dt * 6);                        // 松手减速
     }
-    // 边界（贴图海在界外）
-    player.position.x = Math.max(-B, Math.min(B, player.position.x));
+    // 边界（东边通向 K 线交易场，可走更远）
+    player.position.x = Math.max(-B, Math.min(B + 36, player.position.x));
     player.position.z = Math.max(-B, Math.min(B, player.position.z));
 
     // 动画
@@ -271,9 +283,8 @@
     npcs.forEach(function (n) {
       n.mesh.userData.update(t, false, 0);
     });
-    passerby.userData.update(t, true, 1.4);
+    wanderers.forEach(function (w) { w.mesh.userData.update(t, true, 1.4); });
     updatePasserby(dt);
-
     // 草票拾取
     world.tickets.forEach(function (tk) {
       if (tk.userData.taken) return;
@@ -318,21 +329,24 @@
   }
 
   function updatePasserby(dt) {
-    var st = passerbyState;
-    st.wait -= dt;
-    if (!st.target) {
-      st.target = new THREE.Vector3((Math.random() * 2 - 1) * (B - 4), 0, (Math.random() * 2 - 1) * (B - 4));
-      st.wait = 0;
-    }
-    if (st.wait <= 0) {
-      var to = new THREE.Vector3().subVectors(st.target, passerby.position);
-      if (to.length() < 0.5) { st.target = null; st.wait = 1.5 + Math.random() * 3; }
-      else {
-        to.normalize();
-        passerby.position.addScaledVector(to, 1.3 * dt);
-        passerby.rotation.y = Math.atan2(to.x, to.z);
+    wanderers.forEach(function (w) {
+      var st = w.state;
+      st.wait -= dt;
+      if (!st.target) {
+        var bx = w.bounds;
+        st.target = new THREE.Vector3(bx[0] + Math.random() * (bx[1] - bx[0]), 0, bx[2] + Math.random() * (bx[3] - bx[2]));
+        st.wait = 0;
       }
-    }
+      if (st.wait <= 0) {
+        var to = new THREE.Vector3().subVectors(st.target, w.mesh.position);
+        if (to.length() < 0.5) { st.target = null; st.wait = 1.5 + Math.random() * 3; }
+        else {
+          to.normalize();
+          w.mesh.position.addScaledVector(to, 1.3 * dt);
+          w.mesh.rotation.y = Math.atan2(to.x, to.z);
+        }
+      }
+    });
   }
 
   /* ---------------- 加载 & 标题 ---------------- */
