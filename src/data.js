@@ -5,13 +5,15 @@
 (function () {
   'use strict';
 
-  // ---- 语录卡（M2a 后 5 张；完整版 36 张）----
+  // ---- 语录卡（M2b 后 7 张；完整版 36 张）----
   var CARDS = [
     { id: 'shoucuo',   name: '手搓五年',  type: '暖心', text: '妈妈说：画得再歪也是画，坚持五年就是传奇。', stand: 8 },
     { id: 'mamadongni',name: '妈妈懂你',  type: '暖心', text: '孩子，妈妈不懂动画，妈妈懂你。', stand: 8 },
     { id: 'jiangla',   name: '姜还是老的辣', type: '玄学', text: '哈气都能飘到屋顶，你怕什么站起来。', stand: 8 },
     { id: 'gumin',     name: '别怕站不起来', type: '暖心', text: '别怕站不起来，大 A 都等了这么多年了，不差这一会儿。', stand: 8 },
-    { id: 'jiucai',    name: '牛走了，韭菜还在', type: '毒鸡汤', text: '他们说牛来了，我冲进去，然后牛走了。', stand: 3 }
+    { id: 'jiucai',    name: '牛走了，韭菜还在', type: '毒鸡汤', text: '他们说牛来了，我冲进去，然后牛走了。', stand: 3 },
+    { id: 'paodekuai', name: '跑得快不如喊得响', type: '暖心', text: '蛇：你跑什么？ 我：你追什么？', stand: 8 },
+    { id: 'xuanxue',   name: '牛市会来的', type: '玄学', text: '牛市会来的，就像春天会来，只是这个春天比较……漫长。', stand: 5 }
   ];
 
   // ---- 错别字池（每 ~18 句随机出现 1 个，粗糙美学）----
@@ -100,6 +102,15 @@
         { who: 'player', text: '你怎么也趴着？' },
         { who: 'jiucai', text: '韭菜嘛……都是趴着被割的。他们说牛来了，我冲进去，然后牛走了。', card: 'jiucai', stand: 3 }
       ]
+    },
+    {
+      id: 'xuanxue', name: '玄学牛', kind: 'cow', upright: true, crawl: false,
+      seed: 77, colors: { body: 0x8a7a9a, patch: 0x5a4a6a },
+      pos: [-18, 6], rot: -0.5, scale: 1.0,
+      lines: [
+        { who: 'player', text: '大师，牛市什么时候来？' },
+        { who: 'xuanxue', text: '天机不可泄露。但你可以先把草票攒着。', stand: 2 }
+      ]
     }
   ];
 
@@ -113,7 +124,12 @@
   var WORLD = {
     bound: 26,            // 牛棚镇活动边界（±）
     grassCount: 160,
-    grassHeight: 0.7     // 草比趴着的牛（镜头）高
+    grassHeight: 0.7,    // 草比趴着的牛（镜头）高
+    // 草浪区（蛇追戏舞台）
+    grassArea: { x1: 14, x2: 34, z1: -25, z2: -11 },
+    grassEnter: [13, -19],
+    snakeSpawn: [24, -14],
+    snakeShedSpot: [28, -20]
   };
 
   window.Data = {

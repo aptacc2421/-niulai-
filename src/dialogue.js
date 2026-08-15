@@ -157,6 +157,24 @@
       toastEl._t = setTimeout(function () { toastEl.style.opacity = 0; }, 2200);
     },
 
+    // 弹幕（被蛇咬时："全网都在找妈妈"）
+    danmaku: function (text) {
+      var el = document.createElement('div');
+      el.textContent = text;
+      el.style.cssText = 'position:fixed;z-index:75;font-size:34px;font-weight:bold;color:#ffe89a;' +
+        'text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;' +
+        'left:100%;top:' + (60 + Math.random() * 120) + 'px;white-space:nowrap;pointer-events:none;';
+      document.body.appendChild(el);
+      var t0 = performance.now();
+      function anim(now) {
+        var k = Math.min(1, (now - t0) / 2400);
+        el.style.left = (100 - k * 130) + '%';
+        el.style.opacity = k > 0.85 ? (1 - (k - 0.85) / 0.15) : 1;
+        if (k < 1) requestAnimationFrame(anim); else el.remove();
+      }
+      requestAnimationFrame(anim);
+    },
+
     // 卡片从 3D 嘴部飞到 HUD 右上角
     cardFly: function (worldPos, cardName) {
       var G = window.Game;

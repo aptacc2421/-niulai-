@@ -130,12 +130,48 @@
     return muted;
   }
 
+  // 牛来被咬喊"妈妈"：两声上扬
+  function sfxMomCry() {
+    if (muted) return;
+    try {
+      var c = ac(), t = c.currentTime;
+      [[330, 0], [440, 0.25]].forEach(function (p) {
+        var o = c.createOscillator(), g = c.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(p[0], t + p[1]);
+        o.frequency.exponentialRampToValueAtTime(p[0] * 1.5, t + p[1] + 0.2);
+        var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+        env(g, t + p[1], 0.03, 0.25, 0.3);
+        o.connect(lp); lp.connect(g); g.connect(c.destination);
+        o.start(t + p[1]); o.stop(t + p[1] + 0.35);
+      });
+    } catch (e) {}
+  }
+
+  // 妈妈牛的大脚步（volume 控制远近）
+  function sfxBigStep(vol) {
+    if (muted) return;
+    try {
+      var c = ac(), t = c.currentTime;
+      var src = c.createBufferSource(); src.buffer = noiseBuffer(c);
+      var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+      var g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.1, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      src.connect(lp); lp.connect(g); g.connect(c.destination);
+      src.start(t); src.stop(t + 0.1);
+    } catch (e) {}
+  }
+
   window.AudioSys = {
     init: function () { ac(); startBgm(); },
     boom: sfxBoom,
     ding: sfxDing,
     haqi: sfxHaqi,
     step: sfxStep,
+    momCry: sfxMomCry,
+    bigStep: sfxBigStep,
     toggleMute: toggleMute,
     isMuted: function () { return muted; }
   };

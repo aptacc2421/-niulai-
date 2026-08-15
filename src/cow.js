@@ -252,6 +252,48 @@
     return group;
   }
 
+  /* ---------- 方块蛇（手搓物理：只会直着冲，不会转弯） ---------- */
+  function makeSnake() {
+    var group = new THREE.Group();
+    var bodyMat = new THREE.MeshLambertMaterial({ color: 0x8a8a8a });
+    var bellyMat = new THREE.MeshLambertMaterial({ color: 0xc8c8b8 });
+    var tongueMat = new THREE.MeshLambertMaterial({ color: 0xd04a3a });
+    var segs = [];
+    for (var i = 0; i < 7; i++) {
+      var s = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.34), bodyMat);
+      s.position.set(0, 0.17, -i * 0.3);
+      group.add(s);
+      segs.push(s);
+    }
+    var head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.38, 0.4), bodyMat);
+    head.position.set(0, 0.19, 0.28);
+    group.add(head);
+    var eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.04), new THREE.MeshBasicMaterial({ color: 0x1a1a1a }));
+    eyeL.position.set(-0.12, 0.3, 0.46);
+    group.add(eyeL);
+    var eyeR = eyeL.clone();
+    eyeR.position.x = 0.12;
+    group.add(eyeR);
+    var tongue = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.3), tongueMat);
+    tongue.position.set(0, 0.14, 0.55);
+    group.add(tongue);
+    var belly = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 2.4), bellyMat);
+    belly.position.set(0, 0.02, -0.85);
+    group.add(belly);
+    var shadow = shadowDisc(1.0);
+    group.add(shadow);
+
+    group.userData.update = function (t, phase) {
+      segs.forEach(function (s, i) {
+        s.position.y = 0.17 + Math.sin(t * 6 + i * 0.9) * 0.03;
+        s.rotation.y = Math.sin(t * 3 + i * 0.7) * 0.12;
+      });
+      tongue.position.z = 0.55 + (phase === 'chase' ? 0.12 : 0);
+    };
+    return group;
+  }
+
   window.makeCow = makeCow;
   window.makeCat = makeCat;
+  window.makeSnake = makeSnake;
 })();

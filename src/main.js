@@ -15,7 +15,7 @@
 
   var G = {
     scene: null, camera: null, renderer: null,
-    state: { stand: 10, cards: [], tickets: 0, saveJoked: false },
+    state: { stand: 10, cards: [], tickets: 0, shedSnake: 0, saveJoked: false },
     npcMeshes: {}
   };
   window.Game = G;
@@ -92,6 +92,19 @@
     G.scene.add(w.mesh);
   });
 
+  /* ---------------- 草浪区：蛇（M2b 蛇追戏） ---------------- */
+  var GA = window.Data.WORLD.grassArea;
+  var snake = window.makeSnake();
+  snake.position.set(window.Data.WORLD.snakeSpawn[0], 0, window.Data.WORLD.snakeSpawn[1]);
+  G.scene.add(snake);
+  var snakeState = {
+    phase: 'idle', facing: 0, stuckT: 0, scareT: 0, coolT: 0,
+    escapedOnce: false, caughtOnce: false, seqT: -1,
+    mom: null, momStepT: 0, momLeaveT: 0, sticker: null, stickerT: 0
+  };
+  G.snake = snake;
+  G.snakeState = snakeState;
+
   /* ---------------- 输入 ---------------- */
   var keys = {};
   var codexOpen = false;
@@ -162,6 +175,21 @@
       // 路人牛随机语录
       var lines = window.Data.PASSERBY_LINES.map(function (txt) { return { who: 'passerby', whoName: '路人牛', text: txt }; });
       ref.def = { name: '路人牛', lines: lines };
+    }
+    // 玄学牛：有蛇蜕皮就换卡，没有就闲聊
+    if (ref.def.id === 'xuanxue') {
+      if (G.state.shedSnake > 0) {
+        G.state.shedSnake--;
+        ref.def.lines = [
+          { who: 'player', text: '大师，我捡到一条蛇蜕的皮……' },
+          { who: 'xuanxue', text: '（掐指一算）蛇都脱皮了，说明春天不远了。这皮，我收下了。', card: 'xuanxue', stand: 5 }
+        ];
+      } else {
+        ref.def.lines = [
+          { who: 'player', text: '大师，牛市什么时候来？' },
+          { who: 'xuanxue', text: '天机不可泄露。但你可以先把草票攒着。', stand: 2 }
+        ];
+      }
     }
     // 耄耋醒来
     if (ref.def.id === 'maodie') ref.mesh.userData.wake();
@@ -243,7 +271,7 @@
     requestAnimationFrame(loop);
     var dt = Math.min(clock.getDelta(), 0.05);
     var t = clock.elapsedTime;
-    var canMove = updatePhysics(dt, t) && !window.Dialogue.isActive() && !window.Dialogue.codexOpen();
+    var canMove = updatePhysics(dt, t) && !window.Dialogue.isActive() && !window.Dialogue.codexOpen() && snakeState.seqT < 0;
 
     // 移动：镜头相对（W=往屏幕里走，A=屏幕左，D=屏幕右）
     var ix = 0, iz = 0;
@@ -285,6 +313,7 @@
     });
     wanderers.forEach(function (w) { w.mesh.userData.update(t, true, 1.4); });
     updatePasserby(dt);
+    updateSnake(dt, t);
     // 草票拾取
     world.tickets.forEach(function (tk) {
       if (tk.userData.taken) return;
@@ -298,6 +327,17 @@
         save();
       }
     });
+    // 蛇蜕皮拾取（拿给玄学牛换卡）
+    if (world.shed && !world.shed.userData.taken) {
+      if (world.shed.position.distanceTo(player.position) < 1.15) {
+        world.shed.userData.taken = true;
+        world.shed.visible = false;
+        G.state.shedSnake = (G.state.shedSnake || 0) + 1;
+        window.AudioSys.ding();
+        window.Dialogue.toast('蛇蜕皮 +1（拿去给玄学牛换卡）');
+        save();
+      }
+    }
 
     // 相机：镜头高度 = 站立值；镜头相对 camYaw 平滑跟随（不再被朝向甩来甩去）
     var camH = 0.5 + (G.state.stand / 100) * 1.75;
@@ -347,6 +387,149 @@
         }
       }
     });
+  }
+
+  /* ---------------- M2b 蛇追戏 ---------------- */
+  function awardCard(cardId, fromMesh) {
+    var card = null;
+    window.Data.CARDS.forEach(function (c) { if (c.id === cardId) card = c; });
+    if (!card || G.state.cards.indexOf(card.id) >= 0) return;
+    G.state.cards.push(card.id);
+    G.state.stand += card.stand;
+    window.AudioSys.ding();
+    var mouth = (fromMesh && fromMesh.userData.getMouthPos)
+      ? fromMesh.userData.getMouthPos()
+      : new THREE.Vector3(player.position.x, 1.2, player.position.z);
+    window.Dialogue.cardFly(mouth, card.name);
+    window.Dialogue.toast('获得语录卡「' + card.name + '」站立值 +' + card.stand);
+    window.Dialogue.updateHud();
+    save();
+  }
+
+  function startSnakeBite() {
+    snakeState.seqT = 0;
+    G.state.stand = Math.max(0, G.state.stand - 5);
+    window.AudioSys.momCry();
+    window.Dialogue.danmaku('全网都在找妈妈');
+    window.Dialogue.toast('被蛇咬了一口！站立值 -5（牛生艰难，但不致命）');
+    window.Dialogue.updateHud();
+    save();
+  }
+
+  function updateSnake(dt, t) {
+    snake.userData.update(t, snakeState.phase);
+
+    // 创可贴倒计时
+    if (snakeState.sticker) {
+      snakeState.stickerT -= dt;
+      if (snakeState.stickerT <= 0) { player.remove(snakeState.sticker); snakeState.sticker = null; }
+    }
+    if (snakeState.coolT > 0) snakeState.coolT -= dt;
+
+    // ---- 被咬后的妈妈救场序列 ----
+    if (snakeState.seqT >= 0) {
+      snakeState.seqT += dt;
+      if (snakeState.seqT < 2.2) {
+        if (!snakeState.mom) {
+          snakeState.mom = window.makeCow({ upright: true, crawl: false, seed: 23, colors: { body: 0xe8dcc8, patch: 0xc8a06a } });
+          snakeState.mom.position.set(10, 0, -18);
+          G.scene.add(snakeState.mom);
+        }
+        var mom = snakeState.mom;
+        var to = new THREE.Vector3(player.position.x, 0, player.position.z).sub(mom.position);
+        if (to.length() > 1.2) {
+          to.normalize();
+          mom.position.addScaledVector(to, 9 * dt);
+          mom.rotation.y = Math.atan2(to.x, to.z);
+          snakeState.momStepT -= dt;
+          if (snakeState.momStepT <= 0) {
+            snakeState.momStepT = 0.22;
+            window.AudioSys.bigStep(0.12);
+          }
+        } else {
+          // 妈妈到场：蛇怂、贴创可贴、牛来回入口
+          snakeState.phase = 'scared';
+          snakeState.coolT = 5;
+          window.Dialogue.toast('蛇：我错了……我妈也这样。');
+          window.Dialogue.toast('妈妈牛：被蛇咬了？来，妈妈看看。（站立值 +5）');
+          G.state.stand += 5;
+          var sticker = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.04),
+            new THREE.MeshBasicMaterial({ color: 0xe8dcc8 }));
+          sticker.position.set(0, 1.15, 0.4);
+          player.add(sticker);
+          snakeState.sticker = sticker;
+          snakeState.stickerT = 5;
+          player.position.set(window.Data.WORLD.grassEnter[0], 0, window.Data.WORLD.grassEnter[1]);
+          if (!snakeState.caughtOnce) {
+            snakeState.caughtOnce = true;
+            window.Dialogue.toast('成就解锁：「叫妈妈」');
+          }
+          snakeState.momLeaveT = 2.5;
+          window.Dialogue.updateHud();
+          save();
+        }
+      } else if (snakeState.seqT < 5.0) {
+        if (snakeState.mom) {
+          snakeState.momLeaveT -= dt;
+          if (snakeState.momLeaveT <= 0) {
+            G.scene.remove(snakeState.mom);
+            snakeState.mom = null;
+          }
+        }
+      } else {
+        snakeState.seqT = -1; // 序列结束
+      }
+      return;
+    }
+
+    var px = player.position.x, pz = player.position.z;
+    var inGrass = px > GA.x1 && px < GA.x2 && pz > GA.z1 && pz < GA.z2;
+
+    // 进入草浪区 → 蛇开始追
+    if (snakeState.phase === 'idle' && inGrass && snakeState.coolT <= 0) {
+      snakeState.phase = 'chase';
+      window.Dialogue.toast('🐍 蛇来了！快跑！');
+      window.AudioSys.haqi();
+    }
+
+    if (snakeState.phase === 'chase') {
+      var dx = px - snake.position.x, dz = pz - snake.position.z;
+      var targetF = Math.atan2(dx, dz);
+      var df = targetF - snakeState.facing;
+      while (df > Math.PI) df -= Math.PI * 2;
+      while (df < -Math.PI) df += Math.PI * 2;
+      snakeState.facing += Math.max(-1.2 * dt, Math.min(1.2 * dt, df)); // 转向受限（手搓物理）
+      snake.rotation.y = snakeState.facing;
+      snake.position.x += Math.sin(snakeState.facing) * 4.3 * dt;
+      snake.position.z += Math.cos(snakeState.facing) * 4.3 * dt;
+      // 撞草浪边界卡住 3 秒（不会转弯）
+      if (snake.position.x < GA.x1 || snake.position.x > GA.x2 ||
+          snake.position.z < GA.z1 || snake.position.z > GA.z2) {
+        snakeState.phase = 'stuck';
+        snakeState.stuckT = 3;
+      }
+      // 咬到
+      if (Math.abs(dx) < 1.4 && Math.abs(dz) < 1.4) startSnakeBite();
+    } else if (snakeState.phase === 'stuck') {
+      snakeState.stuckT -= dt;
+      if (snakeState.stuckT <= 0) snakeState.phase = inGrass ? 'chase' : 'idle';
+    } else if (snakeState.phase === 'scared') {
+      var sp = window.Data.WORLD.snakeSpawn;
+      var back = new THREE.Vector3(sp[0], 0, sp[1]).sub(snake.position);
+      if (back.length() < 0.5) snakeState.phase = 'idle';
+      else { back.normalize(); snake.position.addScaledVector(back, 6 * dt); }
+    }
+
+    // 逃出草浪区 → 脱险
+    if ((snakeState.phase === 'chase' || snakeState.phase === 'stuck') && !inGrass) {
+      snakeState.phase = 'idle';
+      snakeState.coolT = 4;
+      if (!snakeState.escapedOnce) {
+        snakeState.escapedOnce = true;
+        awardCard('paodekuai', snake);
+      }
+      window.Dialogue.toast('甩掉蛇了！');
+    }
   }
 
   /* ---------------- 加载 & 标题 ---------------- */
