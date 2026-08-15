@@ -82,6 +82,47 @@ function serve() {
     results.gumin = await page.evaluate(() => window.Game.state.cards.length >= 3);
     await talkWith(49.8, 6.5);                       // 韭菜牛（K 线交易场）
     results.jiucai = await page.evaluate(() => window.Game.state.cards.length >= 4);
+
+    // M2b 蛇追戏：进入草浪区触发追逐 → 逃出得卡
+    const snake = await page.evaluate(async () => {
+      const G = window.Game;
+      G.player.position.set(20, 0, -20);             // 进入草浪区
+      await new Promise(r => setTimeout(r, 500));
+      const phase = G.snakeState.phase;              // 应为 'chase'
+      G.player.position.set(5, 0, -20);              // 逃出
+      await new Promise(r => setTimeout(r, 900));
+      return { phase, escaped: G.state.cards.indexOf('paodekuai') >= 0 };
+    });
+    results.snake = snake.phase === 'chase' && snake.escaped;
+
+    // M2b 被咬 → 妈妈救场序列
+    const bite = await page.evaluate(async () => {
+      const G = window.Game;
+      G.snakeState.coolT = 0;                        // 清除逃出后的冷却，确保触发追逐
+      G.snakeState.phase = 'idle';
+      G.player.position.set(24, 0, -14);
+      G.snake.position.set(24.6, 0, -13.4);
+      await new Promise(r => setTimeout(r, 600));
+      const seq = G.snakeState.seqT >= 0;
+      await new Promise(r => setTimeout(r, 6500));   // 等救场走完
+      return { seq, momGone: !G.snakeState.mom, stand: G.state.stand };
+    });
+    results.mom = bite.seq && bite.momGone;
+
+    // M2b 蛇蜕皮 → 玄学牛换卡
+    await page.evaluate(() => { window.Game.state.shedSnake = 1; window.Game.player.position.set(-18.2, 0, 6.5); });
+    await sleep(300);
+    await page.keyboard.press('e');
+    await sleep(400);
+    for (let i = 0; i < 20; i++) {
+      const on = await page.evaluate(() => window.Dialogue.isActive());
+      if (!on) break;
+      await page.keyboard.press('e');
+      await sleep(150);
+    }
+    await sleep(1200);
+    results.xuanxue = await page.evaluate(() => window.Game.state.cards.indexOf('xuanxue') >= 0);
+
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
 
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });

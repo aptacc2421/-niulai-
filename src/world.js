@@ -192,7 +192,34 @@
     // ---- 段子告示牌 ----
     makeSign(scene, ['本镇禁牛', '——除了你，因为你趴着看不见'], [-8, -2], 0.5, { w: 2.6, h: 1.6 });
     makeSign(scene, ['牛市入口，左转，', '再等几年'], [9, -3], -0.4, { w: 2.6, h: 1.6, bg: '#3a5a2a' });
-    makeSign(scene, ['前方草浪区', '蛇出没（M2 预告）'], [B - 4, -B + 4], -2.4, { w: 2.6, h: 1.6, bg: '#4a3a1a' });
+    makeSign(scene, ['草浪区 · 蛇出没！', '跑快点，被咬会叫妈妈'], [13, -9], 0.2, { w: 2.8, h: 1.6, bg: '#4a3a1a' });
+
+    // ---- 草浪区（高草，蛇追戏舞台）----
+    var GA = W.grassArea;
+    var tallMat = new THREE.MeshLambertMaterial({ color: 0x3f8e3a });
+    for (var tg = 0; tg < 150; tg++) {
+      var tx = GA.x1 + Math.random() * (GA.x2 - GA.x1);
+      var tz = GA.z1 + Math.random() * (GA.z2 - GA.z1);
+      var tall = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.0, 0.22), tallMat);
+      tall.position.set(tx, 1.0, tz);
+      tall.userData.phase = Math.random() * 6.28;
+      scene.add(tall);
+      grass.push(tall); // 复用摆动动画
+    }
+
+    // ---- 蛇蜕皮（草浪区里，拿给玄学牛换卡）----
+    var shed = new THREE.Group();
+    var shedMat = new THREE.MeshLambertMaterial({ color: 0x9a9a92 });
+    for (var si = 0; si < 3; si++) {
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 6, 12), shedMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.06 + si * 0.05;
+      shed.add(ring);
+    }
+    shed.position.set(W.snakeShedSpot[0], 0.1, W.snakeShedSpot[1]);
+    shed.userData.taken = false;
+    scene.add(shed);
+    out.shed = shed;
 
     // 第 7705 棵草（纪念首周票房）
     var special = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12),
@@ -247,6 +274,9 @@
         tk.rotation.y += 0.03;
         tk.position.y = 0.6 + Math.sin(t * 2 + tk.position.x) * 0.08;
       });
+      if (out.shed && !out.shed.userData.taken) {
+        out.shed.rotation.y += 0.02;
+      }
     };
 
     return out;
