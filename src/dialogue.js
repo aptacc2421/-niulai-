@@ -37,7 +37,17 @@
     gumin: '📈',
     jiucai: '🥬',
     xuanxue: '🔮',
-    jingli: '🎬'
+    jingli: '🎬',
+    naiwa: '🍼',
+    kapybara: '🦫',
+    caigou: '🥬',
+    jianjiaoji: '🐔',
+    malou: '🐵',
+    lvouyu: '🐟',
+    xiugou: '🐶',
+    zhuzhu: '🐷',
+    huahua: '🐼',
+    haqimiao: '🌫️'
   };
   var haqiPuffs = [];
 
@@ -223,9 +233,11 @@
 
     openCodex: function () {
       var s = window.Game.state;
-      var byId = {};
-      window.Data.CARDS.forEach(function (c) { byId[c.id] = c; });
       codexList.innerHTML = '';
+      var title1 = document.createElement('div');
+      title1.className = 'codex-title';
+      title1.textContent = '语录图鉴';
+      codexList.appendChild(title1);
       window.Data.CARDS.forEach(function (c) {
         var got = s.cards.indexOf(c.id) >= 0;
         var d = document.createElement('div');
@@ -236,6 +248,20 @@
         } else {
           d.innerHTML = '？？？  ——还没听过的鸡汤';
         }
+        codexList.appendChild(d);
+      });
+      // 怪东西图鉴（第二收集系统）
+      var title2 = document.createElement('div');
+      title2.className = 'codex-title';
+      title2.textContent = '怪东西图鉴（' + window.Data.CREATURES.length + ' 只）';
+      codexList.appendChild(title2);
+      window.Data.CREATURES.forEach(function (cr) {
+        var got = s.cards.indexOf(cr.card) >= 0;
+        var d = document.createElement('div');
+        d.className = 'card-item' + (got ? '' : ' empty');
+        d.innerHTML = got
+          ? '<span class="cn">' + cr.name + '</span><span class="ct">' + (cr.desc || '') + '</span>'
+          : '<span class="cn">' + cr.name + '</span><span class="ct">' + (cr.desc || '') + '</span><span class="cx">（还没搭上话）</span>';
         codexList.appendChild(d);
       });
       codexEl.classList.remove('hidden');

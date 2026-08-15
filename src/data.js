@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  // ---- 语录卡（M2b 后 7 张；完整版 36 张）----
+  // ---- 语录卡（M2d 后 17 张；完整版 36 张）----
   var CARDS = [
     { id: 'shoucuo',   name: '手搓五年',  type: '暖心', text: '妈妈说：画得再歪也是画，坚持五年就是传奇。', stand: 8 },
     { id: 'mamadongni',name: '妈妈懂你',  type: '暖心', text: '孩子，妈妈不懂动画，妈妈懂你。', stand: 8 },
@@ -13,7 +13,17 @@
     { id: 'gumin',     name: '别怕站不起来', type: '暖心', text: '别怕站不起来，大 A 都等了这么多年了，不差这一会儿。', stand: 8 },
     { id: 'jiucai',    name: '牛走了，韭菜还在', type: '毒鸡汤', text: '他们说牛来了，我冲进去，然后牛走了。', stand: 3 },
     { id: 'paodekuai', name: '跑得快不如喊得响', type: '暖心', text: '蛇：你跑什么？ 我：你追什么？', stand: 8 },
-    { id: 'xuanxue',   name: '牛市会来的', type: '玄学', text: '牛市会来的，就像春天会来，只是这个春天比较……漫长。', stand: 5 }
+    { id: 'xuanxue',   name: '牛市会来的', type: '玄学', text: '牛市会来的，就像春天会来，只是这个春天比较……漫长。', stand: 5 },
+    { id: 'naiwa',     name: '喝奶长高高', type: '暖心', text: '哈哈哈哈……喝奶，长高高！（它笑到打滚）', stand: 8 },
+    { id: 'kapybara',  name: '情绪稳定', type: '暖心', text: '急什么，牛市和卡皮巴拉一样，总会来的。', stand: 8 },
+    { id: 'caigou',    name: '菜是原罪', type: '毒鸡汤', text: '汪汪。别看了，我就是棵菜。', stand: 3 },
+    { id: 'jianjiaoji',name: '该叫的时候就得叫', type: '毒鸡汤', text: '啊————！！！（音量拉满）', stand: 3 },
+    { id: 'malou',     name: '吗喽的命也是命', type: '毒鸡汤', text: '牛市不来，班还是要上的。', stand: 3 },
+    { id: 'lvouyu',    name: '看不见我', type: '玄学', text: '我来看电影，但我不想被看见。', stand: 5 },
+    { id: 'xiugou',    name: '哭完就好了', type: '暖心', text: '呜……谢谢你把我的座位修好了。', stand: 8 },
+    { id: 'zhuzhu',    name: '串场也是场', type: '玄学', text: '我是猪猪侠！……不好意思走错片场了。', stand: 5 },
+    { id: 'huahua',    name: '稳如老熊', type: '暖心', text: '（嚼嚼嚼）我觉得竹子比较实在。', stand: 8 },
+    { id: 'haqimiao',  name: '哈气也是一种传承', type: '玄学', text: '哈——……（它跟耄耋学会了）', stand: 5 }
   ];
 
   // ---- 错别字池（每 ~18 句随机出现 1 个，粗糙美学）----
@@ -139,6 +149,27 @@
     [44, -4], [52, 8], [38, 8]
   ];
 
+  // ---- 奶瓶（喂奶娃，M2d）----
+  var MILK_SPOTS = [
+    [-14, -2], [-10, 14], [6, 20], [18, 12], [-20, 10]
+  ];
+
+  // ---- 奇奇怪怪生物团（M2d，除耄耋外的 9 只可见 + 1 只隐藏）----
+  var CREATURES = [
+    { id: 'naiwa',     name: '奶娃',     card: 'naiwa',     kind: 'baby',    pos: [-12, -14], desc: '捧腹大笑的奶娃娃（喂 5 瓶奶可跟班）' },
+    { id: 'kapybara',  name: '卡皮巴拉', card: 'kapybara',  kind: 'kapybara', pos: [54, 6],    desc: '泡在水池里，情绪稳定' },
+    { id: 'caigou',    name: '菜狗',     card: 'caigou',    kind: 'caigou',  pos: [-8, 16],   desc: '卷心菜狗（远看是棵菜）' },
+    { id: 'jianjiaoji',name: '尖叫鸡',   card: 'jianjiaoji', kind: 'jianjiaoji', pos: [0, 9], desc: '一按就响（音量拉满）' },
+    { id: 'malou',     name: '吗喽',     card: 'malou',     kind: 'malou',   pos: [36, 10],   desc: '搬砖的打工人' },
+    { id: 'lvouyu',    name: '绿头鱼',   card: 'lvouyu',    kind: 'lvouyu',  pos: [45, -17.5], desc: '头套摘不下来的观众' },
+    { id: 'xiugou',    name: '修勾',     card: 'xiugou',    kind: 'xiugou',  pos: [40, -22.5], desc: '座位坏了在门口哭（先帮它修座位）' },
+    { id: 'zhuzhu',    name: '猪猪侠',   card: 'zhuzhu',    kind: 'zhuzhu',  pos: [-12, 9],   desc: '站在屋顶摆 pose' },
+    { id: 'huahua',    name: '大熊猫花花', card: 'huahua',  kind: 'huahua',  pos: [4, 18],    desc: '坐在石头上啃竹子' },
+    { id: 'haqimiao',  name: '？？？',    card: 'haqimiao',  kind: 'haqimiao', pos: [-24, -2], desc: '网线管里的神秘生物（集齐 9 只可见怪后出现）' }
+  ];
+  // 隐藏怪解锁条件：9 只可见怪 + 耄耋 = 10 张生物卡集齐
+  var CREATURE_CARD_IDS = ['jiangla', 'naiwa', 'kapybara', 'caigou', 'jianjiaoji', 'malou', 'lvouyu', 'xiugou', 'zhuzhu', 'huahua'];
+
   // ---- 世界配置 ----
   var WORLD = {
     bound: 26,            // 牛棚镇活动边界（±）
@@ -161,7 +192,10 @@
     PASSERBY_LINES: PASSERBY_LINES,
     NPCS: NPCS,
     SHOWTIMES: SHOWTIMES,
+    CREATURES: CREATURES,
+    CREATURE_CARD_IDS: CREATURE_CARD_IDS,
     TICKET_SPOTS: TICKET_SPOTS,
+    MILK_SPOTS: MILK_SPOTS,
     WORLD: WORLD
   };
 })();

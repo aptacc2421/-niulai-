@@ -293,6 +293,302 @@
     return group;
   }
 
+  /* ============================================================
+   * 奇奇怪怪生物团（M2d）—— 全是方块拼装，低模手搓风
+   * 每个工厂返回 { group, update(t, extra), getMouthPos() }
+   * ============================================================ */
+  function bx(w, h, d, color, x, y, z, rx, ry, rz) {
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
+    m.position.set(x || 0, y || 0, z || 0);
+    if (rx) m.rotation.x = rx;
+    if (ry) m.rotation.y = ry;
+    if (rz) m.rotation.z = rz;
+    return m;
+  }
+  function creatureBase(scale) {
+    var g = new THREE.Group();
+    g.scale.setScalar(scale || 1);
+    var sh = shadowDisc(0.7);
+    g.add(sh);
+    g.userData.getMouthPos = function () {
+      var p = new THREE.Vector3(0, 0.9, 0.35);
+      g.localToWorld(p);
+      return p;
+    };
+    return g;
+  }
+
+  // 奶娃：捧腹大笑的奶白团子（笑到后仰 + 捂肚子）
+  function makeNaiwa() {
+    var g = creatureBase(0.9);
+    var body = bx(0.7, 0.66, 0.6, 0xf0e6d0, 0, 0.55, 0);
+    g.add(body);
+    var head = bx(0.55, 0.5, 0.5, 0xf0e6d0, 0, 1.18, 0.05, -0.35, 0, 0);
+    g.add(head);
+    var tuft = bx(0.08, 0.12, 0.08, 0x5a3a2a, 0, 1.5, 0.02);
+    g.add(tuft);
+    var eyeL = bx(0.06, 0.05, 0.03, 0x2a2a2a, -0.13, 1.28, 0.28);
+    var eyeR = bx(0.06, 0.05, 0.03, 0x2a2a2a, 0.13, 1.28, 0.28);
+    g.add(eyeL); g.add(eyeR);
+    // 双手捂肚子（笑）
+    var handL = bx(0.14, 0.14, 0.12, 0xf0e6d0, -0.28, 0.55, 0.2);
+    var handR = bx(0.14, 0.14, 0.12, 0xf0e6d0, 0.28, 0.55, 0.2);
+    g.add(handL); g.add(handR);
+    var mouth = bx(0.16, 0.05, 0.03, 0x8a3a2a, 0, 1.08, 0.27, 0, 0, 0.3);
+    g.add(mouth);
+    g.userData.update = function (t, extra) {
+      body.scale.y = 1 + Math.abs(Math.sin(t * 5)) * 0.08;   // 笑到肚子抖
+      head.rotation.z = Math.sin(t * 4.2) * 0.15;
+      head.rotation.x = -0.35 + Math.sin(t * 3.4) * 0.08;    // 笑到后仰
+      if (extra === 'follow') {
+        head.rotation.x = -0.5;                              // 跟班时笑得更猛
+        body.scale.y = 1 + Math.abs(Math.sin(t * 7)) * 0.12;
+      }
+    };
+    return g;
+  }
+
+  // 卡皮巴拉：情绪稳定水豚（泡水里）
+  function makeKapybara() {
+    var g = creatureBase(1.0);
+    var body = bx(1.15, 0.6, 0.72, 0x8a6a42, 0, 0.25, 0);
+    g.add(body);
+    var head = bx(0.42, 0.36, 0.4, 0x8a6a42, 0, 0.62, 0.35);
+    g.add(head);
+    var nose = bx(0.18, 0.08, 0.14, 0x5a3a22, 0, 0.62, 0.56);
+    g.add(nose);
+    var eyeL = bx(0.05, 0.05, 0.03, 0x1a1a1a, -0.12, 0.72, 0.5);
+    var eyeR = bx(0.05, 0.05, 0.03, 0x1a1a1a, 0.12, 0.72, 0.5);
+    g.add(eyeL); g.add(eyeR);
+    var earL = bx(0.08, 0.06, 0.04, 0x6a4e2c, -0.2, 0.82, 0.3);
+    var earR = bx(0.08, 0.06, 0.04, 0x6a4e2c, 0.2, 0.82, 0.3);
+    g.add(earL); g.add(earR);
+    g.userData.update = function (t) {
+      body.scale.y = 1 + Math.sin(t * 1.2) * 0.02;   // 深呼吸
+      head.rotation.y = Math.sin(t * 0.4) * 0.15;    // 偶尔缓缓转头
+    };
+    return g;
+  }
+
+  // 菜狗：卷心菜包裹的方块狗
+  function makeCaigou() {
+    var g = creatureBase(0.95);
+    var body = bx(0.8, 0.6, 0.7, 0x5f9e4a, 0, 0.42, 0);
+    g.add(body);
+    // 菜叶（头周围的叶片）
+    [-0.5, 0.5].forEach(function (s) {
+      g.add(bx(0.1, 0.5, 0.72, 0x4a8e3a, s * 0.45, 0.5, 0, 0, 0, s * -0.3));
+      g.add(bx(0.8, 0.5, 0.1, 0x4a8e3a, 0, 0.5, s * 0.4, 0, s * 0.3, 0));
+    });
+    var head = bx(0.36, 0.34, 0.36, 0x6fae5a, 0, 0.85, 0.42);
+    g.add(head);
+    var eyeL = bx(0.05, 0.05, 0.03, 0x1a1a1a, -0.1, 0.9, 0.6);
+    var eyeR = bx(0.05, 0.05, 0.03, 0x1a1a1a, 0.1, 0.9, 0.6);
+    g.add(eyeL); g.add(eyeR);
+    var nose = bx(0.08, 0.06, 0.04, 0x2a1a1a, 0, 0.82, 0.6);
+    g.add(nose);
+    var tail = bx(0.08, 0.2, 0.08, 0x5f9e4a, 0, 0.55, -0.45, 0.4, 0, 0);
+    g.add(tail);
+    g.userData.update = function (t) {
+      tail.rotation.z = Math.sin(t * 3) * 0.3;
+      head.rotation.y = Math.sin(t * 1.5) * 0.1;
+    };
+    return g;
+  }
+
+  // 尖叫鸡：黄色橡胶鸡，嘴是按钮
+  function makeJianjiaoji() {
+    var g = creatureBase(0.95);
+    var body = bx(0.55, 0.7, 0.55, 0xffd23a, 0, 0.55, 0);
+    g.add(body);
+    var head = bx(0.34, 0.3, 0.34, 0xffd23a, 0, 1.05, 0.08);
+    g.add(head);
+    var comb = bx(0.1, 0.14, 0.06, 0xd03a2a, 0, 1.28, 0.08);
+    g.add(comb);
+    var beak = bx(0.2, 0.12, 0.16, 0xff8a2a, 0, 1.0, 0.26);
+    g.add(beak);
+    var button = bx(0.14, 0.06, 0.1, 0xd03a2a, 0, 1.05, 0.36);
+    g.add(button);
+    var eyeL = bx(0.05, 0.06, 0.03, 0x1a1a1a, -0.1, 1.14, 0.24);
+    var eyeR = bx(0.05, 0.06, 0.03, 0x1a1a1a, 0.1, 1.14, 0.24);
+    g.add(eyeL); g.add(eyeR);
+    var wingL = bx(0.14, 0.3, 0.06, 0xffc020, -0.4, 0.55, 0, 0, 0, -0.2);
+    var wingR = bx(0.14, 0.3, 0.06, 0xffc020, 0.4, 0.55, 0, 0, 0, 0.2);
+    g.add(wingL); g.add(wingR);
+    g.userData.update = function (t) {
+      body.scale.y = 1 + Math.sin(t * 2.2) * 0.03;
+      wingL.rotation.z = Math.sin(t * 3) * 0.08 - 0.2;
+      wingR.rotation.z = -Math.sin(t * 3) * 0.08 + 0.2;
+    };
+    return g;
+  }
+
+  // 吗喽：搬砖的打工人
+  function makeMalou() {
+    var g = creatureBase(0.95);
+    var body = bx(0.5, 0.55, 0.45, 0x8a7a6a, 0, 0.55, 0);
+    g.add(body);
+    var head = bx(0.4, 0.38, 0.4, 0x9a8a7a, 0, 1.0, 0);
+    g.add(head);
+    var face = bx(0.26, 0.24, 0.06, 0xc8b8a0, 0, 1.0, 0.22);
+    g.add(face);
+    var eyeL = bx(0.05, 0.05, 0.03, 0x1a1a1a, -0.07, 1.06, 0.25);
+    var eyeR = bx(0.05, 0.05, 0.03, 0x1a1a1a, 0.07, 1.06, 0.25);
+    g.add(eyeL); g.add(eyeR);
+    var brick = bx(0.42, 0.22, 0.26, 0xc88a4a, 0, 0.5, 0.3);
+    g.add(brick);
+    var armL = bx(0.14, 0.3, 0.12, 0x8a7a6a, -0.3, 0.62, 0.28, 0, 0, 0.4);
+    var armR = bx(0.14, 0.3, 0.12, 0x8a7a6a, 0.3, 0.62, 0.28, 0, 0, -0.4);
+    g.add(armL); g.add(armR);
+    var tail = bx(0.06, 0.3, 0.06, 0x8a7a6a, 0, 0.7, -0.3, 0.5, 0, 0);
+    g.add(tail);
+    g.userData.update = function (t) {
+      body.position.y = 0.55 + Math.abs(Math.sin(t * 2.4)) * 0.06; // 搬砖颠颠
+      tail.rotation.x = 0.5 + Math.sin(t * 2) * 0.15;
+    };
+    return g;
+  }
+
+  // 绿头鱼：头占 80% 的大头鱼（头套）
+  function makeLvouyu() {
+    var g = creatureBase(1.0);
+    var head = bx(0.85, 0.8, 0.85, 0x3a9e5a, 0, 0.85, 0);
+    g.add(head);
+    var eyeL = bx(0.16, 0.16, 0.05, 0xffffff, -0.2, 1.0, 0.42);
+    var eyeR = bx(0.16, 0.16, 0.05, 0xffffff, 0.2, 1.0, 0.42);
+    g.add(eyeL); g.add(eyeR);
+    var pupL = bx(0.07, 0.07, 0.04, 0x1a1a1a, -0.2, 1.0, 0.46);
+    var pupR = bx(0.07, 0.07, 0.04, 0x1a1a1a, 0.2, 1.0, 0.46);
+    g.add(pupL); g.add(pupR);
+    var mouth = bx(0.2, 0.06, 0.05, 0x2a2a2a, 0, 0.68, 0.42);
+    g.add(mouth);
+    var tail = bx(0.3, 0.12, 0.2, 0x3a9e5a, 0, 0.3, -0.6);
+    g.add(tail);
+    g.userData.update = function (t) {
+      head.position.y = 0.85 + Math.sin(t * 2) * 0.02;
+      tail.rotation.y = Math.sin(t * 2.4) * 0.25;
+    };
+    return g;
+  }
+
+  // 修勾：流泪小狗（眼泪常挂）
+  function makeXiugou() {
+    var g = creatureBase(0.95);
+    var body = bx(0.8, 0.55, 0.5, 0xd8c8a8, 0, 0.4, 0);
+    g.add(body);
+    var head = bx(0.42, 0.4, 0.4, 0xd8c8a8, 0, 0.82, 0.28);
+    g.add(head);
+    var earL = bx(0.1, 0.16, 0.08, 0xb8a888, -0.22, 1.0, 0.2, -0.3, 0, 0);
+    var earR = bx(0.1, 0.16, 0.08, 0xb8a888, 0.22, 1.0, 0.2, 0.3, 0, 0);
+    g.add(earL); g.add(earR);
+    var eyeL = bx(0.07, 0.06, 0.03, 0x1a1a1a, -0.12, 0.92, 0.46);
+    var eyeR = bx(0.07, 0.06, 0.03, 0x1a1a1a, 0.12, 0.92, 0.46);
+    g.add(eyeL); g.add(eyeR);
+    // 两滴眼泪（半透明浅蓝）
+    var tearMat = new THREE.MeshLambertMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.75 });
+    var tearL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.04), tearMat);
+    tearL.position.set(-0.14, 0.78, 0.46);
+    var tearR = tearL.clone();
+    tearR.position.x = 0.14;
+    g.add(tearL); g.add(tearR);
+    var nose = bx(0.08, 0.06, 0.04, 0x2a1a1a, 0, 0.72, 0.46);
+    g.add(nose);
+    var tail = bx(0.06, 0.18, 0.06, 0xd8c8a8, 0, 0.5, -0.28, -0.5, 0, 0);
+    g.add(tail);
+    g.userData.update = function (t) {
+      tail.rotation.x = -0.5 - Math.sin(t * 2.4) * 0.1;
+      head.rotation.y = Math.sin(t * 1.2) * 0.08;      // 抽泣摇头
+    };
+    return g;
+  }
+
+  // 猪猪侠：粉猪 + 红披风
+  function makeZhuzhu() {
+    var g = creatureBase(1.0);
+    var body = bx(0.7, 0.62, 0.6, 0xf0a8b8, 0, 1.0, 0);
+    g.add(body);
+    var head = bx(0.5, 0.46, 0.48, 0xf0a8b8, 0, 1.45, 0.1);
+    g.add(head);
+    var snout = bx(0.22, 0.16, 0.1, 0xe890a0, 0, 1.42, 0.35);
+    g.add(snout);
+    var earL = bx(0.1, 0.1, 0.04, 0xf0a8b8, -0.2, 1.7, 0.05, 0, 0, -0.3);
+    var earR = bx(0.1, 0.1, 0.04, 0xf0a8b8, 0.2, 1.7, 0.05, 0, 0, 0.3);
+    g.add(earL); g.add(earR);
+    // 红披风
+    var cape = bx(0.8, 0.5, 0.06, 0xd03a3a, 0, 0.95, -0.28, 0, 0, 0.1);
+    g.add(cape);
+    var legL = bx(0.18, 0.4, 0.18, 0xf0a8b8, -0.2, 0.4, 0.1);
+    var legR = bx(0.18, 0.4, 0.18, 0xf0a8b8, 0.2, 0.4, 0.1);
+    g.add(legL); g.add(legR);
+    g.userData.update = function (t) {
+      cape.rotation.z = 0.1 + Math.sin(t * 2) * 0.05;  // 披风飘
+      body.scale.y = 1 + Math.sin(t * 1.8) * 0.02;
+    };
+    return g;
+  }
+
+  // 大熊猫花花：啃竹子
+  function makeHuahua() {
+    var g = creatureBase(1.1);
+    var body = bx(0.9, 0.85, 0.85, 0xf2f2f2, 0, 0.7, 0);
+    g.add(body);
+    var head = bx(0.6, 0.55, 0.55, 0xf2f2f2, 0, 1.35, 0.05);
+    g.add(head);
+    var patchL = bx(0.16, 0.14, 0.05, 0x1a1a1a, -0.2, 1.42, 0.3);
+    var patchR = bx(0.16, 0.14, 0.05, 0x1a1a1a, 0.2, 1.42, 0.3);
+    g.add(patchL); g.add(patchR);
+    var earL = bx(0.16, 0.14, 0.08, 0x1a1a1a, -0.28, 1.62, 0.02);
+    var earR = bx(0.16, 0.14, 0.08, 0x1a1a1a, 0.28, 1.62, 0.02);
+    g.add(earL); g.add(earR);
+    var armL = bx(0.2, 0.5, 0.2, 0x1a1a1a, -0.45, 0.65, 0.2, 0.3, 0, 0);
+    var armR = bx(0.2, 0.5, 0.2, 0x1a1a1a, 0.45, 0.65, 0.2, -0.3, 0, 0);
+    g.add(armL); g.add(armR);
+    // 竹子（绿色细条）
+    var bamboo = bx(0.09, 0.9, 0.09, 0x3a9e5a, 0, 1.15, 0.35, 0.2, 0, 0);
+    g.add(bamboo);
+    g.userData.update = function (t) {
+      head.rotation.z = Math.sin(t * 1.6) * 0.06;      // 慢慢嚼
+      bamboo.rotation.x = 0.2 + Math.sin(t * 2) * 0.05;
+    };
+    return g;
+  }
+
+  // 隐藏怪：网线管里的哈气生物（耄耋远亲）
+  function makeHaqimiao() {
+    var g = creatureBase(0.8);
+    var body = bx(0.5, 0.46, 0.5, 0x9a9a92, 0, 0.45, 0);
+    g.add(body);
+    var head = bx(0.4, 0.38, 0.4, 0x9a9a92, 0, 0.92, 0);
+    g.add(head);
+    var earL = bx(0.12, 0.12, 0.08, 0x9a9a92, -0.16, 1.16, -0.02, 0, 0, -0.4);
+    var earR = bx(0.12, 0.12, 0.08, 0x9a9a92, 0.16, 1.16, -0.02, 0, 0, 0.4);
+    g.add(earL); g.add(earR);
+    var eyeL = bx(0.06, 0.03, 0.02, 0xffffff, -0.1, 0.98, 0.2);
+    var eyeR = bx(0.06, 0.03, 0.02, 0xffffff, 0.1, 0.98, 0.2);
+    g.add(eyeL); g.add(eyeR);
+    var tail = bx(0.06, 0.3, 0.06, 0x9a9a92, 0, 0.3, 0.3, 0.6, 0, 0);
+    g.add(tail);
+    g.userData.update = function (t) {
+      body.scale.y = 1 + Math.sin(t * 1.4) * 0.02;
+      tail.rotation.x = 0.6 + Math.sin(t * 1.8) * 0.1;
+    };
+    return g;
+  }
+
+  // 统一入口
+  window.makeCreature = function (kind, seed) {
+    var map = {
+      baby: makeNaiwa, kapybara: makeKapybara, caigou: makeCaigou,
+      jianjiaoji: makeJianjiaoji, malou: makeMalou, lvouyu: makeLvouyu,
+      xiugou: makeXiugou, zhuzhu: makeZhuzhu, huahua: makeHuahua,
+      haqimiao: makeHaqimiao
+    };
+    var fn = map[kind] || makeCaigou;
+    var g = fn();
+    if (seed !== undefined) g.rotation.y = (seed % 360) * Math.PI / 180;
+    return g;
+  };
+
   window.makeCow = makeCow;
   window.makeCat = makeCat;
   window.makeSnake = makeSnake;

@@ -42,7 +42,7 @@ function serve() {
 
   const results = {};
   try {
-    await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle0', timeout: 90000 });
     await sleep(3500);
     await page.click('#start-btn');
     await sleep(300);
@@ -155,6 +155,79 @@ function serve() {
     await talkWith(42.2, -13.8);
     const standAfter = await page.evaluate(() => window.Game.state.stand);
     results.jingli = standAfter >= standBefore + 2;
+
+    // M2d 生物团
+    await talkWith(53.8, 6.5);                        // 卡皮巴拉
+    results.kapybara = await page.evaluate(() => window.Game.state.cards.indexOf('kapybara') >= 0);
+
+    // 奶娃：喂 5 瓶奶 → 跟班 + 卡片
+    await page.evaluate(() => { window.Game.state.milk = 5; window.Game.player.position.set(-12.2, 0, -13.5); });
+    await sleep(300);
+    await page.keyboard.press('e'); await sleep(400);
+    for (let i = 0; i < 10; i++) {
+      const on = await page.evaluate(() => window.Dialogue.isActive());
+      if (!on) break;
+      await page.keyboard.press('e'); await sleep(150);
+    }
+    await sleep(1000);
+    results.naiwa = await page.evaluate(() =>
+      window.Game.state.cards.indexOf('naiwa') >= 0 && window.Game.naiwaFollower());
+
+    // 修勾：先修座位再对话得卡
+    await page.evaluate(() => { window.Game.state.xiugouTalked = true; window.Game.player.position.set(40.2, 0, -22.0); });
+    await sleep(200);
+    await page.keyboard.press('e'); await sleep(400);
+    for (let i = 0; i < 10; i++) {
+      const on = await page.evaluate(() => window.Dialogue.isActive());
+      if (!on) break;
+      await page.keyboard.press('e'); await sleep(150);
+    }
+    await sleep(300);
+    await page.evaluate(() => { window.Game.player.position.set(48.6, 0, -18.4); }); // 坏座位
+    await sleep(300);
+    await page.keyboard.press('e'); await sleep(400);
+    const seatFixed = await page.evaluate(() => window.Game.state.seatFixed);
+    await page.evaluate(() => { window.Game.player.position.set(40.2, 0, -22.0); });
+    await sleep(300);
+    await page.keyboard.press('e'); await sleep(400);
+    for (let i = 0; i < 10; i++) {
+      const on = await page.evaluate(() => window.Dialogue.isActive());
+      if (!on) break;
+      await page.keyboard.press('e'); await sleep(150);
+    }
+    await sleep(800);
+    results.xiugou = seatFixed && await page.evaluate(() => window.Game.state.cards.indexOf('xiugou') >= 0);
+
+    // 尖叫鸡：对话得卡（顺带全屏鸡叫 + 周围牛弹跳）
+    await page.evaluate(() => { window.Game.player.position.set(0.2, 0, 9.5); });
+    await sleep(300);
+    await page.keyboard.press('e'); await sleep(400);
+    for (let i = 0; i < 10; i++) {
+      const on = await page.evaluate(() => window.Dialogue.isActive());
+      if (!on) break;
+      await page.keyboard.press('e'); await sleep(150);
+    }
+    await sleep(800);
+    results.jianjiaoji = await page.evaluate(() => window.Game.state.cards.indexOf('jianjiaoji') >= 0);
+
+    // 隐藏怪：集齐生物卡 → 网线管钻出 → 对话得卡
+    await page.evaluate(() => {
+      window.Game.state.cards = window.Data.CREATURE_CARD_IDS.slice();
+      window.Game.player.position.set(-24.2, 0, -1.5);
+    });
+    await sleep(2500);
+    const hiddenVisible = await page.evaluate(() => {
+      const cr = window.Game.creatures.find(c => c.def.id === 'haqimiao');
+      return cr ? cr.mesh.visible : false;
+    });
+    await page.keyboard.press('e'); await sleep(400);
+    for (let i = 0; i < 12; i++) {
+      const on = await page.evaluate(() => window.Dialogue.isActive());
+      if (!on) break;
+      await page.keyboard.press('e'); await sleep(150);
+    }
+    await sleep(800);
+    results.hidden = hiddenVisible && await page.evaluate(() => window.Game.state.cards.indexOf('haqimiao') >= 0);
 
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
 
