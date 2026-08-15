@@ -1,0 +1,11 @@
+{
+  "name": "zhili-niu-smoke",
+  "private": true,
+  "description": "直立牛平原 M1 冒烟测试（无头浏览器）",
+  "scripts": {
+    "smoke": "node smoke.js"
+  },
+  "devDependencies": {
+    "puppeteer": "^22.15.0"
+  }
+}
