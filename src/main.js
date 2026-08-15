@@ -15,7 +15,7 @@
 
   var G = {
     scene: null, camera: null, renderer: null,
-    state: { stand: 10, cards: [], tickets: 0, shedSnake: 0, saveJoked: false },
+    state: { stand: 10, cards: [], tickets: 0, shedSnake: 0, stubs: [], patternSeen: [], saveJoked: false },
     npcMeshes: {}
   };
   window.Game = G;
@@ -30,6 +30,10 @@
         if (d && typeof d.stand === 'number') G.state = d;
       }
     } catch (e) {}
+    // 旧存档补默认字段
+    G.state.stubs = G.state.stubs || [];
+    G.state.patternSeen = G.state.patternSeen || [];
+    G.state.shedSnake = G.state.shedSnake || 0;
   }
   function save() {
     try {
@@ -40,6 +44,7 @@
       }
     } catch (e) {}
   }
+  G.save = save;
 
   /* ---------------- 场景 ---------------- */
   G.scene = new THREE.Scene();
@@ -119,7 +124,10 @@
       if (window.Dialogue.codexOpen()) window.Dialogue.closeCodex();
       else window.Dialogue.openCodex();
     }
-    if (e.key === 'Escape') window.Dialogue.closeCodex();
+    if (e.key === 'Escape') {
+      if (window.TicketUI.isOpen()) window.TicketUI.close();
+      else window.Dialogue.closeCodex();
+    }
     if (e.key === 'm' || e.key === 'M') toggleDirectorMode();
     if (e.key === 'k' || e.key === 'K') {
       var muted = window.AudioSys.toggleMute();
@@ -154,6 +162,10 @@
 
   /* ---------------- 交互 ---------------- */
   function nearestInteractable() {
+    // 售票机优先（M2c 选座购票）
+    if (world.machinePos && world.machinePos.distanceTo(player.position) < 2.4) {
+      return { kind: 'machine', ref: null };
+    }
     var best = null, bestD = 1.9;
     npcs.forEach(function (n) {
       var d = n.mesh.position.distanceTo(player.position);
@@ -170,6 +182,10 @@
     if (window.Dialogue.isActive()) return;
     var it = nearestInteractable();
     if (!it) return;
+    if (it.kind === 'machine') {
+      window.TicketUI.open();
+      return;
+    }
     var ref = it.ref;
     if (it.kind === 'npc' && !ref.def.lines) {
       // 路人牛随机语录
@@ -271,7 +287,7 @@
     requestAnimationFrame(loop);
     var dt = Math.min(clock.getDelta(), 0.05);
     var t = clock.elapsedTime;
-    var canMove = updatePhysics(dt, t) && !window.Dialogue.isActive() && !window.Dialogue.codexOpen() && snakeState.seqT < 0;
+    var canMove = updatePhysics(dt, t) && !window.Dialogue.isActive() && !window.Dialogue.codexOpen() && !window.TicketUI.isOpen() && snakeState.seqT < 0;
 
     // 移动：镜头相对（W=往屏幕里走，A=屏幕左，D=屏幕右）
     var ix = 0, iz = 0;
@@ -322,7 +338,7 @@
         tk.visible = false;
         G.state.tickets++;
         window.AudioSys.ding();
-        window.Dialogue.toast('捡到草票 +1（买票用，M2 开放）');
+        window.Dialogue.toast('捡到草票 +1（电影院买票用）');
         window.Dialogue.updateHud();
         save();
       }
@@ -357,8 +373,12 @@
     if (canMove) {
       var it = nearestInteractable();
       if (it) {
-        var nm = it.ref.mesh.userData && it.ref.def ? it.ref.def.name : '路人牛';
-        promptEl.innerHTML = '按 <b>E</b> 与 ' + nm + ' 对话';
+        if (it.kind === 'machine') {
+          promptEl.innerHTML = '按 <b>E</b> 购票（5 草票/张）';
+        } else {
+          var nm = it.ref.mesh.userData && it.ref.def ? it.ref.def.name : '路人牛';
+          promptEl.innerHTML = '按 <b>E</b> 与 ' + nm + ' 对话';
+        }
         promptEl.classList.remove('hidden');
       } else promptEl.classList.add('hidden');
     } else promptEl.classList.add('hidden');

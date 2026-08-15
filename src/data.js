@@ -111,7 +111,26 @@
         { who: 'player', text: '大师，牛市什么时候来？' },
         { who: 'xuanxue', text: '天机不可泄露。但你可以先把草票攒着。', stand: 2 }
       ]
+    },
+    {
+      id: 'jingli', name: '影院经理牛', kind: 'cow', upright: true, crawl: false,
+      seed: 88, colors: { body: 0x5a5a6a, patch: 0x3a3a4a },
+      pos: [42, -15], rot: 1.6, scale: 1.0,
+      lines: [
+        { who: 'player', text: '经理，这影院还营业吗？' },
+        { who: 'jingli', text: '营业。虽然屋顶没了，但银幕还能用。' },
+        { who: 'player', text: '卖得怎么样？' },
+        { who: 'jingli', text: '比《奥德赛》好卖。', stand: 2 }
+      ]
     }
+  ];
+
+  // ---- 电影院场次（选座购票，M2c）----
+  var SHOWTIMES = [
+    { name: '《牛来》', ch: '牛', gold: false },
+    { name: '《牛来：直立牛之章》', ch: '来', gold: false },
+    { name: '《牛来 3：牛市归来》', ch: '牛来', gold: false },
+    { name: '《牛来：牛市归来 · 彩蛋场》', ch: '发', gold: true }
   ];
 
   // ---- 草票 ----
@@ -129,7 +148,10 @@
     grassArea: { x1: 14, x2: 34, z1: -25, z2: -11 },
     grassEnter: [13, -19],
     snakeSpawn: [24, -14],
-    snakeShedSpot: [28, -20]
+    snakeShedSpot: [28, -20],
+    // 电影院废墟（选座购票，M2c）
+    cinemaPos: [48, -20],
+    machinePos: [42.5, -19]
   };
 
   window.Data = {
@@ -138,6 +160,7 @@
     MAODIE_LINES: MAODIE_LINES,
     PASSERBY_LINES: PASSERBY_LINES,
     NPCS: NPCS,
+    SHOWTIMES: SHOWTIMES,
     TICKET_SPOTS: TICKET_SPOTS,
     WORLD: WORLD
   };

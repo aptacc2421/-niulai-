@@ -19,6 +19,7 @@
   var standTip = document.getElementById('stand-tip');
   var cardCount = document.getElementById('card-count');
   var ticketCount = document.getElementById('grass-ticket');
+  var stubCount = document.getElementById('stub-count');
 
   var active = false;
   var lines = [];
@@ -34,7 +35,9 @@
     laoniu: '🐮',
     maodie: '🌫️',
     gumin: '📈',
-    jiucai: '🥬'
+    jiucai: '🥬',
+    xuanxue: '🔮',
+    jingli: '🎬'
   };
   var haqiPuffs = [];
 
@@ -211,6 +214,7 @@
       standNeed.textContent = Math.max(0, 100 - s.stand);
       cardCount.textContent = s.cards.length;
       ticketCount.textContent = s.tickets;
+      stubCount.textContent = s.stubs ? s.stubs.length : 0;
       if (s.stand >= 100) standTip.textContent = '你站起来了！';
       else if (s.stand >= 66) standTip.textContent = '快站起来了，镜头都高了';
       else if (s.stand >= 33) standTip.textContent = '半蹲了，能看到屋顶了';
