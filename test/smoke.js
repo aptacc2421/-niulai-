@@ -42,7 +42,7 @@ function serve() {
 
   const results = {};
   try {
-    await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle0', timeout: 60000 });
     await sleep(3500);
     await page.click('#start-btn');
     await sleep(300);
@@ -122,6 +122,39 @@ function serve() {
     }
     await sleep(1200);
     results.xuanxue = await page.evaluate(() => window.Game.state.cards.indexOf('xuanxue') >= 0);
+
+    // M2c 选座购票：开售票机 → 选空座 → 确认购票
+    await page.evaluate(() => {
+      window.Game.state.tickets = 15;
+      window.Game.player.position.set(42.5, 0, -17.5);
+    });
+    await sleep(300);
+    await page.keyboard.press('e');
+    await sleep(500);
+    const ticketOpen = await page.evaluate(() => window.TicketUI.isOpen());
+    await page.evaluate(() => {
+      const s = document.querySelector('#ticket-grid .ticket-seat.empty');
+      if (s) s.click();
+    });
+    await sleep(200);
+    await page.evaluate(() => {
+      const b = document.getElementById('ticket-buy');
+      if (b) b.click();
+    });
+    await sleep(800);
+    const ticket = await page.evaluate(() => ({
+      stubs: window.Game.state.stubs.length,
+      tickets: window.Game.state.tickets
+    }));
+    results.ticket = ticketOpen && ticket.stubs >= 1 && ticket.tickets === 10;
+
+    // M2c 影院经理牛（关掉购票界面再对话，站立值 +2）
+    await page.keyboard.press('Escape');
+    await sleep(200);
+    const standBefore = await page.evaluate(() => window.Game.state.stand);
+    await talkWith(42.2, -13.8);
+    const standAfter = await page.evaluate(() => window.Game.state.stand);
+    results.jingli = standAfter >= standBefore + 2;
 
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
 

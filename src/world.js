@@ -247,6 +247,8 @@
 
     // ---- K 线交易场 ----
     buildTradingGround(scene);
+    // ---- 电影院废墟（M2c 选座购票） ----
+    buildCinema(scene, out);
     // 东门口的方向牌
     makeSign(scene, ['→ K 线交易场', '（红涨绿跌，绿多红少）'], [B + 3.5, 0], -Math.PI / 2, { w: 2.6, h: 1.6, bg: '#4a3a2a' });
 
@@ -352,6 +354,84 @@
     // 交易场告示牌
     makeSign(scene, ['红涨绿跌', '——绿多红少，请勿参照反向牛'], [56, -9], -0.6, { w: 2.8, h: 1.6, bg: '#3a2a1a' });
     makeSign(scene, ['本场交易', '亏了不许哭'], [33, 10], 0.7, { w: 2.6, h: 1.6, bg: '#2a3a2a' });
+  }
+
+  /* ---------- 电影院废墟（M2c 选座购票舞台） ---------- */
+  function buildCinema(scene, out) {
+    var CX = window.Data.WORLD.cinemaPos[0], CZ = window.Data.WORLD.cinemaPos[1];
+    var wallMat = new THREE.MeshLambertMaterial({ color: 0x8a8578 });
+    var darkMat = new THREE.MeshLambertMaterial({ color: 0x5a5548 });
+
+    // 地面
+    var floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 12),
+      new THREE.MeshLambertMaterial({ color: 0x7a7568 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(CX, 0.02, CZ);
+    scene.add(floor);
+
+    // 三面墙（背面 + 两侧，留南面入口；侧面歪一块 = 废墟）
+    var back = new THREE.Mesh(new THREE.BoxGeometry(13.4, 5, 0.4), wallMat);
+    back.position.set(CX, 2.5, CZ - 5.8);
+    scene.add(back);
+    var sideL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.4, 11.6), wallMat);
+    sideL.position.set(CX - 6.5, 2.2, CZ);
+    scene.add(sideL);
+    var sideR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 4.4, 11.6), wallMat);
+    sideR.position.set(CX + 6.5, 2.2, CZ);
+    sideR.rotation.z = 0.12; // 歪了（废墟）
+    scene.add(sideR);
+    var rubble = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.5), darkMat);
+    rubble.position.set(CX + 5.5, 0.45, CZ + 3.5);
+    rubble.rotation.x = 0.5;
+    scene.add(rubble);
+
+    // 银幕（最大的告示牌）
+    var screen = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 4.2, 0.3),
+      new THREE.MeshBasicMaterial({ map: signTexture(['《牛来》今日上映', '座无虚席 · 座位都拼成字了'], 256, 128, '#1a2a3a', '#ffe89a') })
+    );
+    screen.position.set(CX, 3.2, CZ - 5.55);
+    scene.add(screen);
+
+    // 门头招牌
+    var marquee = new THREE.Mesh(
+      new THREE.BoxGeometry(7, 1.4, 0.4),
+      new THREE.MeshBasicMaterial({ map: signTexture(['牛来影院 · 烂到抽象', '反正满场'], 256, 96, '#3a1a1a', '#ffd970') })
+    );
+    marquee.position.set(CX, 5.4, CZ + 5.2);
+    scene.add(marquee);
+
+    // 座位（6 排 × 8 座，几个坏的/歪的）
+    var seatMat = new THREE.MeshLambertMaterial({ color: 0x8a3a2a });
+    for (var r = 0; r < 6; r++) {
+      for (var c = 0; c < 8; c++) {
+        var seat = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.55), seatMat);
+        seat.position.set(CX - 3.5 + c * 1.0, 0.45, CZ - 4 + r * 1.1);
+        if (Math.random() < 0.12) seat.rotation.z = (Math.random() - 0.5) * 0.6; // 坏座
+        scene.add(seat);
+      }
+    }
+
+    // 售票机（可交互）
+    var machine = new THREE.Group();
+    var body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.7, 0.8), darkMat);
+    body.position.y = 0.85;
+    machine.add(body);
+    var mScreen = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xbfe3ff }));
+    mScreen.position.set(0, 1.35, 0.42);
+    machine.add(mScreen);
+    var slot = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.05),
+      new THREE.MeshBasicMaterial({ color: 0x1a1a1a }));
+    slot.position.set(0, 0.55, 0.42);
+    machine.add(slot);
+    machine.position.set(window.Data.WORLD.machinePos[0], 0, window.Data.WORLD.machinePos[1]);
+    machine.rotation.y = 0.4;
+    scene.add(machine);
+    makeSign(scene, ['售票机', '选座购票 · 5 草票/张'], [window.Data.WORLD.machinePos[0] - 2, window.Data.WORLD.machinePos[1]], 0.9, { w: 2.2, h: 1.4, bg: '#2a2a3a' });
+
+    out.machine = machine;
+    out.machinePos = new THREE.Vector3(window.Data.WORLD.machinePos[0], 0, window.Data.WORLD.machinePos[1]);
   }
 
   window.buildWorld = buildWorld;

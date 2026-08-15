@@ -52,3 +52,21 @@ canvas { display: block; }
 .card-item .ct { color: #9a9478; font-size: 12px; margin-left: 8px; }
 .card-item .cx { color: #cfc9ae; font-size: 14px; margin-top: 6px; line-height: 1.6; }
 .card-item.empty { color: #6e6954; text-align: center; border-style: dashed; }
+
+/* ---------- 选座购票（M2c） ---------- */
+#ticket-ui { position: fixed; inset: 0; background: rgba(6, 8, 16, .9); z-index: 85; display: flex; align-items: center; justify-content: center; }
+.ticket-box { width: min(560px, 92vw); background: rgba(18, 20, 34, .95); border: 3px solid #e8e3c8; padding: 18px; color: #e8e3c8; }
+.ticket-title { text-align: center; font-size: 22px; color: #ffd970; letter-spacing: 3px; margin-bottom: 6px; }
+.ticket-sub { text-align: center; font-size: 13px; color: #9a9478; margin-bottom: 10px; }
+.ticket-screen { text-align: center; font-size: 12px; color: #6e6954; background: #0c0e1a; padding: 6px; border: 1px dashed #3a3a4a; margin-bottom: 10px; }
+.ticket-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-bottom: 12px; }
+.ticket-seat { aspect-ratio: 1; border-radius: 3px; cursor: pointer; border: 1px solid #555; }
+.ticket-seat.sold { background: #c03a2a; cursor: not-allowed; border-color: #7a1a0a; }
+.ticket-seat.empty { background: #e8e3c8; }
+.ticket-seat.empty:hover { background: #fff; }
+.ticket-seat.picked { background: #ffd970 !important; box-shadow: 0 0 8px #ffd970; }
+.ticket-seat.gold { background: #ffd970; }
+.ticket-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+.ticket-foot button { font-size: 14px; padding: 8px 14px; background: #ffd970; color: #3a2a08; border: 2px solid #3a2a08; cursor: pointer; }
+.ticket-foot button.refund { background: #5a5548; color: #e8e3c8; border-color: #3a3a2a; }
+.ticket-hint { text-align: center; font-size: 12px; color: #6e6954; margin-top: 12px; }

@@ -11,4 +11,4 @@ build/
 .DS_Store
 Thumbs.db
 *.tmp
-test/node_modules/
+test/node_modules
