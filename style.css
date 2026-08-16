@@ -101,7 +101,7 @@ body.touch-mode { overscroll-behavior: none; }
 
 /* ---------- 隐藏作弊终端（懂的都懂；输入无回显，像 sudo 密码） ---------- */
 #cheat-console { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); width: min(480px, 92vw); background: rgba(8, 10, 16, .94); border: 1px solid #3a5a3a; font-family: Consolas, "Courier New", monospace; padding: 10px 14px; z-index: 88; color: #9fe89f; }
-#cheat-out { font-size: 13px; line-height: 1.7; max-height: 180px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 6px; color: #7fcf7f; }
+#cheat-out { font-size: 14px; line-height: 1.8; max-height: 220px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 8px; color: #b8f0b8; }
 .cheat-line { display: flex; align-items: center; gap: 6px; }
 .cheat-prompt { color: #5a9e5a; font-weight: bold; font-size: 15px; }
 #cheat-input { background: transparent; border: none; outline: none; color: transparent; caret-color: #9fe89f; font-family: inherit; font-size: 15px; width: 100%; }

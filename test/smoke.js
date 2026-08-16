@@ -266,18 +266,20 @@ function serve() {
       window.Game.player.position.set(0, 0, 0);
       window.Game.player.visible = true;
     });
-    const runCmd = async (cmd) => {
-      await page.keyboard.press(':');
-      await sleep(200);
-      await page.keyboard.type(cmd);
-      await page.keyboard.press('Enter');
-      await sleep(300);
-    };
-    await runCmd('ls');
+    // 打开终端（回车后保持打开，像真终端）
+    await page.keyboard.press(':');
+    await sleep(200);
+    await page.keyboard.type('ls');
+    await page.keyboard.press('Enter');
+    await sleep(300);
     const lsShows = await page.evaluate(() =>
       document.getElementById('cheat-out').textContent.indexOf('spirit.sh') >= 0);
-    await runCmd('./spirit.sh');
+    await page.keyboard.type('./spirit.sh');
+    await page.keyboard.press('Enter');
+    await sleep(300);
     const spiritOn = await page.evaluate(() => window.Game.spirit() && !window.Game.player.visible);
+    await page.keyboard.press('Escape');   // Esc 关闭终端
+    await sleep(150);
     // 灵魂模式下 Q 只下降、不应甩镜头（修复冲突）
     const yaw0 = await page.evaluate(() => window.Game.yaw());
     await page.keyboard.press('q');
@@ -298,7 +300,11 @@ function serve() {
     const ts05 = await page.evaluate(() => window.Game.timeScale());
     await page.keyboard.press('0');
     const ts1 = await page.evaluate(() => window.Game.timeScale());
-    await runCmd('q!');
+    await page.keyboard.press(':');
+    await sleep(200);
+    await page.keyboard.type('q!');
+    await page.keyboard.press('Enter');
+    await sleep(300);
     const spiritOff = await page.evaluate(() => !window.Game.spirit() && window.Game.player.visible);
     results.cheat = lsShows && spiritOn && qNoShake && pitch < -0.1 && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
 
