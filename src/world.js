@@ -254,6 +254,14 @@
     // 东门口的方向牌
     makeSign(scene, ['→ K 线交易场', '（红涨绿跌，绿多红少）'], [B + 3.5, 0], -Math.PI / 2, { w: 2.6, h: 1.6, bg: '#4a3a2a' });
 
+    // ---- 副本广场（挂载的副本会出现在这里） ----
+    var plzPad = new THREE.Mesh(new THREE.CircleGeometry(9, 24),
+      new THREE.MeshLambertMaterial({ color: 0x8a8578 }));
+    plzPad.rotation.x = -Math.PI / 2;
+    plzPad.position.set(12, 0.02, 20);
+    scene.add(plzPad);
+    makeSign(scene, ['副本广场', '挂载即出现 · 开发者入口'], [12, 25], Math.PI, { w: 3, h: 1.6, bg: '#1a3a4a' });
+
     // ---- 草票（旋转发光） ----
     var ticketMat = new THREE.MeshLambertMaterial({ color: 0xffd970, emissive: 0x7a5a10 });
     window.Data.TICKET_SPOTS.forEach(function (sp) {
@@ -474,5 +482,6 @@
     makeSign(scene, ['请勿按压', '（按了会响）'], [2.4, 9.5], -0.3, { w: 2.4, h: 1.5, bg: '#5a1a1a' });
   }
 
+  window.makeSignTex = signTexture;   // 给副本插件用的贴图工厂
   window.buildWorld = buildWorld;
 })();

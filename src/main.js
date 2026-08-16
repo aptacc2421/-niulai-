@@ -20,7 +20,7 @@
     touchInput: { x: 0, z: 0 }   // 手机摇杆输入（x=左右，z=前后）
   };
   window.Game = G;
-  window.GAME_VERSION = 'v0.4.8';
+  window.GAME_VERSION = 'v0.4.9';
 
   var SAVE_KEY = 'zhili_niu_m1_v1';
 
@@ -231,10 +231,40 @@
     timeScale = seq[(seq.indexOf(timeScale) + 1) % seq.length];
     cheatPrint('speed.conf：当前 ×' + timeScale);
   }
-  // ---- 假文件系统（挂载式：副本=文件，/dungeons 是挂载区，/lib 是库） ----
+  /* ---------------- 副本插件系统（给开发者：挂载即出现在副本广场，主线可见） ---------------- */
+  var PLZ = { x: 12, z: 20 };
+  var dungeonInstances = {};
+  G.dungeonInstances = dungeonInstances;
+  function mountDungeon(name, silent) {
+    if (dungeonInstances[name]) return;
+    var reg = window.Dungeons.REGISTRY[name];
+    if (!reg) return;
+    var slot = { x: PLZ.x + Object.keys(dungeonInstances).length * 3.6 - 1.8, z: PLZ.z };
+    var api = {
+      scene: G.scene, pos: slot,
+      makeSignTex: function (lines, w, h, bg, fg) {
+        return window.makeSignTex ? window.makeSignTex(lines, w, h, bg, fg) : null;
+      }
+    };
+    var content = reg.build ? reg.build(api) : null;
+    if (content) G.scene.add(content);
+    var portal = window.Dungeons.buildPortal(G.scene, reg.name, slot);
+    dungeonInstances[name] = { portal: portal, content: content, name: reg.name, slot: slot };
+    if (!silent) window.Dialogue.toast('已挂载副本「' + reg.name + '」：副本广场出现传送门');
+  }
+  function unmountDungeon(name) {
+    var inst = dungeonInstances[name];
+    if (!inst) return false;
+    G.scene.remove(inst.portal);
+    if (inst.content) G.scene.remove(inst.content);
+    delete dungeonInstances[name];
+    return true;
+  }
+
+  // ---- 假文件系统（挂载式：/cheats 作弊区 + /dungeons 副本区，/lib 是库） ----
   var VFS = {
     cwd: '/dungeons',
-    lib: {
+    libCheats: {
       'spirit.sh':     { desc: '#!/bin/bash\n# 灵魂出体（肉身留在原地）\n# 用法：./spirit.sh', run: toggleSpirit },
       'speed.conf':    { desc: '变速配置：当前 ×' + timeScale + '（] 加速 / [ 减速 / 0 复位）', run: cycleSpeed },
       'yes.bin':       { desc: '二进制：哞。', run: toggleYes },
@@ -243,8 +273,12 @@
       'rm_rf.tar':     { desc: '⚠ 危险文件：删库跑路。', run: rmRf },
       'hint.txt':      { desc: '提示：cat 一下每个文件。\n提示：mount 挂载 / rm 拔掉，试试看。', run: function () { cheatPrint('提示：cat 一下每个文件，mount/rm 试试看。'); } }
     },
-    mounted: ['spirit.sh', 'speed.conf', 'yes.bin', 'npm.sh', 'force_push.sh', 'rm_rf.tar', 'hint.txt']
+    mountedCheats: ['spirit.sh', 'speed.conf', 'yes.bin', 'npm.sh', 'force_push.sh', 'rm_rf.tar', 'hint.txt'],
+    mountedDungeons: window.Dungeons.names().slice()   // 副本默认全部挂载
   };
+  // 初始挂载全部副本（主线副本广场直接显示）
+  window.Dungeons.names().forEach(function (n) { mountDungeon(n, true); });
+
   function vfsNorm(p) {
     var parts = [];
     (p || '').split('/').forEach(function (s) {
@@ -255,22 +289,51 @@
     return '/' + parts.join('/');
   }
   function vfsName(p) { return String(p).replace(/^\/+/, '').split('/').pop(); }
+  function vfsKind(n) {
+    if (VFS.libCheats[n]) return 'cheat';
+    if (window.Dungeons.REGISTRY[n]) return 'dungeon';
+    return null;
+  }
+  function vfsDesc(n) {
+    if (VFS.libCheats[n]) return VFS.libCheats[n].desc;
+    var reg = window.Dungeons.REGISTRY[n];
+    return reg ? reg.desc : null;
+  }
+  function vfsMounted(n) {
+    var k = vfsKind(n);
+    if (k === 'cheat') return VFS.mountedCheats.indexOf(n) >= 0;
+    if (k === 'dungeon') return VFS.mountedDungeons.indexOf(n) >= 0;
+    return false;
+  }
   function vfsLs(dir) {
     var d = vfsNorm(dir);
-    if (d === '/') { cheatPrint('bin/   dungeons/   lib/'); return; }
-    if (d === '/dungeons') {
+    if (d === '/') { cheatPrint('bin/   cheats/   dungeons/   lib/'); return; }
+    if (d === '/cheats') {
       cheatPrint('总用量 42');
-      if (!VFS.mounted.length) cheatPrint('（空——去 /lib 看看有什么可 mount 的）');
-      VFS.mounted.forEach(function (n) {
+      if (!VFS.mountedCheats.length) cheatPrint('（空——去 /lib 看看有什么可 mount 的）');
+      VFS.mountedCheats.forEach(function (n) {
         var size = (n.length * 13 + 128) % 900 + 128;
         cheatPrint('-rwxr-xr-x 1 root root ' + size + ' 牛来 ' + n);
       });
       return;
     }
-    if (d === '/lib') {
+    if (d === '/dungeons') {
       cheatPrint('总用量 64');
-      Object.keys(VFS.lib).forEach(function (n) {
-        cheatPrint('-r--r--r-- 1 root root 512 牛来 ' + n + (VFS.mounted.indexOf(n) >= 0 ? '  [已挂载]' : ''));
+      if (!VFS.mountedDungeons.length) cheatPrint('（空——去 /lib 看看有什么可 mount 的副本）');
+      VFS.mountedDungeons.forEach(function (n) {
+        var reg = window.Dungeons.REGISTRY[n];
+        var size = (n.length * 19 + 256) % 1200 + 256;
+        cheatPrint('-rwxr-xr-x 1 root root ' + size + ' 牛来 ' + n + '    ← ' + (reg ? reg.name : ''));
+      });
+      return;
+    }
+    if (d === '/lib') {
+      cheatPrint('总用量 96');
+      Object.keys(VFS.libCheats).forEach(function (n) {
+        cheatPrint('-r--r--r-- 1 root root 512 牛来 ' + n + (vfsMounted(n) ? '  [已挂载]' : '') + '    (cheat)');
+      });
+      Object.keys(window.Dungeons.REGISTRY).forEach(function (n) {
+        cheatPrint('-r--r--r-- 1 root root 768 牛来 ' + n + (vfsMounted(n) ? '  [已挂载]' : '') + '    (副本)');
       });
       return;
     }
@@ -279,41 +342,62 @@
   }
   function vfsCat(name) {
     var n = vfsName(name);
-    if (!VFS.lib[n]) { cheatPrint('cat: ' + name + ': 没有那个文件'); return; }
-    cheatPrint(VFS.lib[n].desc);
+    var d = vfsDesc(n);
+    if (d === null) { cheatPrint('cat: ' + name + ': 没有那个文件'); return; }
+    cheatPrint(d);
   }
   function vfsRun(name) {
     var n = vfsName(name);
-    if (!VFS.lib[n]) { cheatPrint('bash: ' + name + ': 没有那个文件或目录'); return; }
-    if (VFS.mounted.indexOf(n) < 0) { cheatPrint('bash: ' + name + ': 未挂载（试试 mount ' + n + '）'); return; }
-    if (VFS.lib[n].run) VFS.lib[n].run(); else cheatPrint(VFS.lib[n].desc);
+    var k = vfsKind(n);
+    if (!k) { cheatPrint('bash: ' + name + ': 没有那个文件或目录'); return; }
+    if (!vfsMounted(n)) { cheatPrint('bash: ' + name + ': 未挂载（试试 mount ' + n + '）'); return; }
+    if (k === 'cheat' && VFS.libCheats[n].run) { VFS.libCheats[n].run(); return; }
+    if (k === 'dungeon') {
+      cheatPrint('副本「' + window.Dungeons.REGISTRY[n].name + '」：' + vfsDesc(n));
+      cheatPrint('它在副本广场（坐标 ' + PLZ.x + ', ' + PLZ.z + '），走过去按 E 进入。');
+      return;
+    }
+    cheatPrint(vfsDesc(n));
   }
   function vfsRm(argStr) {
     var args = (argStr || '').trim().split(/\s+/).filter(Boolean);
-    if (!args.length) { cheatPrint('用法：rm <文件名>（从 /dungeons 卸载）'); return; }
+    if (!args.length) { cheatPrint('用法：rm <文件名>（卸载，从挂载区拔掉）'); return; }
     if (args.indexOf('-rf') >= 0 && args[args.length - 1] === '/') {
       cheatPrint('rm: 拒绝删除根目录（就算这是游戏也不行）');
       return;
     }
     var n = vfsName(args[args.length - 1]);
-    if (!VFS.lib[n]) { cheatPrint('rm: ' + n + ': 没有那个文件'); return; }
-    var i = VFS.mounted.indexOf(n);
-    if (i < 0) { cheatPrint('rm: ' + n + ': 没挂载，拔啥呢'); return; }
-    VFS.mounted.splice(i, 1);
-    cheatPrint('已卸载 /dungeons/' + n + '（拔掉电源了）');
+    var k = vfsKind(n);
+    if (!k) { cheatPrint('rm: ' + n + ': 没有那个文件'); return; }
+    if (!vfsMounted(n)) { cheatPrint('rm: ' + n + ': 没挂载，拔啥呢'); return; }
+    if (k === 'cheat') {
+      VFS.mountedCheats.splice(VFS.mountedCheats.indexOf(n), 1);
+      cheatPrint('已卸载 /cheats/' + n + '（拔掉电源了）');
+    } else {
+      unmountDungeon(n);
+      VFS.mountedDungeons.splice(VFS.mountedDungeons.indexOf(n), 1);
+      cheatPrint('已卸载 /dungeons/' + n + '（副本已从副本广场移除）');
+    }
   }
   function vfsMount(name) {
     var n = vfsName(name);
-    if (!n) { cheatPrint('用法：mount <文件名>（从 /lib 挂到 /dungeons）'); return; }
-    if (!VFS.lib[n]) { cheatPrint('mount: /lib/' + n + ' 不存在'); return; }
-    if (VFS.mounted.indexOf(n) >= 0) { cheatPrint('mount: /dungeons/' + n + ' 已经挂载了'); return; }
-    VFS.mounted.push(n);
-    cheatPrint('已挂载 /dungeons/' + n);
+    if (!n) { cheatPrint('用法：mount <文件名>（从 /lib 挂载）'); return; }
+    var k = vfsKind(n);
+    if (!k) { cheatPrint('mount: /lib/' + n + ' 不存在'); return; }
+    if (vfsMounted(n)) { cheatPrint('mount: ' + n + ' 已经挂载了'); return; }
+    if (k === 'cheat') {
+      VFS.mountedCheats.push(n);
+      cheatPrint('已挂载 /cheats/' + n);
+    } else {
+      VFS.mountedDungeons.push(n);
+      mountDungeon(n);
+      cheatPrint('已挂载 /dungeons/' + n + '（副本出现在副本广场）');
+    }
   }
   function vfsCd(p) {
     if (!p || p === '~') { VFS.cwd = '/dungeons'; return; }
     var d = vfsNorm((p[0] === '/' ? '' : VFS.cwd + '/') + p);
-    if (d === '/' || d === '/dungeons' || d === '/lib' || d === '/bin') VFS.cwd = d;
+    if (d === '/' || d === '/bin' || d === '/cheats' || d === '/dungeons' || d === '/lib') VFS.cwd = d;
     else cheatPrint('cd: ' + p + ': 没有那个目录');
   }
   function cheatPrint(text) {
@@ -428,7 +512,14 @@
         world.brokenSeat.pos.distanceTo(player.position) < 1.9) {
       return { kind: 'seat', ref: null };
     }
+    // 副本传送门（挂载的副本）
     var best = null, bestD = 1.9;
+    Object.keys(dungeonInstances).forEach(function (name) {
+      var ip = dungeonInstances[name].portal.position;
+      var dx = ip.x - player.position.x, dz = ip.z - player.position.z;
+      var d = Math.sqrt(dx * dx + dz * dz);
+      if (d < 2.3) { best = { kind: 'dungeon', ref: name }; bestD = 0; }
+    });
     // 生物团（用 XZ 距离，屋顶的猪猪侠也能对话）
     creatures.forEach(function (cr) {
       if (!cr.mesh.visible) return;
@@ -518,6 +609,16 @@
     if (window.Dialogue.isActive()) return;
     var it = nearestInteractable();
     if (!it) return;
+    if (it.kind === 'dungeon') {
+      // 进入副本（挂载的副本）
+      var inst = dungeonInstances[it.ref];
+      var reg = window.Dungeons.REGISTRY[it.ref];
+      if (inst && reg) {
+        player.position.set(inst.slot.x, 0, inst.slot.z);
+        window.Dialogue.toast('进入副本「' + inst.name + '」：' + reg.desc);
+      }
+      return;
+    }
     if (it.kind === 'machine') {
       window.TicketUI.open();
       return;
@@ -831,6 +932,9 @@
           promptEl.innerHTML = '按 <b>E</b> 购票（5 草票/张）';
         } else if (it.kind === 'seat') {
           promptEl.innerHTML = '按 <b>E</b> 修座位（掰正它）';
+        } else if (it.kind === 'dungeon') {
+          var inst = dungeonInstances[it.ref];
+          promptEl.innerHTML = '按 <b>E</b> 进入副本「' + (inst ? inst.name : it.ref) + '」';
         } else {
           var nm = it.ref.def ? (it.ref.def.name || '路人牛') : '路人牛';
           promptEl.innerHTML = '按 <b>E</b> 与 ' + nm + ' 对话';

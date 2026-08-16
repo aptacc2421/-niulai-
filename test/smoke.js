@@ -270,7 +270,7 @@ function serve() {
     await sleep(200);
     const lsOutput = async () => {
       await page.evaluate(() => { document.getElementById('cheat-out').textContent = ''; });
-      await page.keyboard.type('ls'); await page.keyboard.press('Enter'); await sleep(250);
+      await page.keyboard.type('ls /cheats'); await page.keyboard.press('Enter'); await sleep(250);
       return page.evaluate(() => document.getElementById('cheat-out').textContent);
     };
     const out1 = await lsOutput();
@@ -315,6 +315,31 @@ function serve() {
     await sleep(300);
     const spiritOff = await page.evaluate(() => !window.Game.spirit() && window.Game.player.visible);
     results.cheat = lsShows && rmGone && mountOk && spiritOn && qNoShake && pitch < -0.1 && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
+
+    // 副本插件系统：/dungeons 挂载区 + 广场传送门 + 进入
+    const dls = async () => {
+      await page.evaluate(() => { document.getElementById('cheat-out').textContent = ''; });
+      await page.keyboard.type('ls'); await page.keyboard.press('Enter'); await sleep(250);
+      return page.evaluate(() => document.getElementById('cheat-out').textContent);
+    };
+    const dOut1 = await dls();   // cwd=/dungeons
+    const dMounted = dOut1.indexOf('garden.sh') >= 0 && await page.evaluate(() => !!window.Game.dungeonInstances['garden.sh']);
+    await page.keyboard.type('rm garden.sh'); await page.keyboard.press('Enter'); await sleep(200);
+    const dOut2 = await dls();
+    const dRemoved = dOut2.indexOf('garden.sh') < 0 && await page.evaluate(() => !window.Game.dungeonInstances['garden.sh']);
+    await page.keyboard.type('mount garden.sh'); await page.keyboard.press('Enter'); await sleep(200);
+    const dMounted2 = await page.evaluate(() => !!window.Game.dungeonInstances['garden.sh']);
+    // 进入副本：关终端 → 走到传送门按 E
+    await page.keyboard.press('Escape'); await sleep(150);
+    await page.evaluate(() => { window.Game.player.position.set(12, 0, 20); });
+    await sleep(300);
+    await page.keyboard.press('e'); await sleep(300);
+    const dEntered = await page.evaluate(() => {
+      const inst = window.Game.dungeonInstances['garden.sh'];
+      const p = window.Game.player.position;
+      return inst && Math.abs(p.x - inst.slot.x) < 0.6 && Math.abs(p.z - inst.slot.z) < 0.6;
+    });
+    results.dungeon = dMounted && dRemoved && dMounted2 && dEntered;
 
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });
     console.log('截图: /tmp/zhili_niu_smoke.png');
