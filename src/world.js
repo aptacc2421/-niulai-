@@ -261,6 +261,8 @@
     plzPad.position.set(12, 0.02, 20);
     scene.add(plzPad);
     makeSign(scene, ['副本广场', '挂载即出现 · 开发者入口'], [12, 25], Math.PI, { w: 3, h: 1.6, bg: '#1a3a4a' });
+    // 出生点附近的指路牌
+    makeSign(scene, ['副本广场 → 往北走', '看到灰色圆盘就是'], [3.5, 16], -0.5, { w: 2.8, h: 1.6, bg: '#1a3a4a' });
 
     // ---- 草票（旋转发光） ----
     var ticketMat = new THREE.MeshLambertMaterial({ color: 0xffd970, emissive: 0x7a5a10 });
