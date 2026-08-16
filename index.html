@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>直立牛平原 · M1 原型（《牛来》粉丝二创）</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐮</text></svg>">
 <link rel="stylesheet" href="style.css">
@@ -69,6 +69,20 @@
     <div class="codex-hint">按 Tab 关闭</div>
   </div>
 
+  <!-- 触屏控制（手机） -->
+  <div id="touch-ui" class="hidden">
+    <div id="joy-base"><div id="joy-knob"></div></div>
+    <div class="touch-buttons">
+      <button id="btn-interact">对话</button>
+      <div class="touch-row">
+        <button id="btn-codex">图鉴</button>
+        <button id="btn-director">导演</button>
+        <button id="btn-boom">哞</button>
+        <button id="btn-mute">🔊</button>
+      </div>
+    </div>
+  </div>
+
   <script src="lib/three.min.js"></script>
   <script src="src/data.js"></script>
   <script src="src/audio.js"></script>
@@ -77,5 +91,6 @@
   <script src="src/dialogue.js"></script>
   <script src="src/ticket.js"></script>
   <script src="src/main.js"></script>
+  <script src="src/touch.js"></script>
 </body>
 </html>
