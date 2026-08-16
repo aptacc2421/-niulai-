@@ -41,8 +41,14 @@ function serve() {
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
   const results = {};
+  async function gotoRetry(p, tries) {
+    for (let i = 0; i < tries; i++) {
+      try { await p.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle0', timeout: 90000 }); return; }
+      catch (e) { if (i === tries - 1) throw e; console.log('goto 重试 ' + (i + 1)); await sleep(2000); }
+    }
+  }
   try {
-    await page.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle0', timeout: 90000 });
+    await gotoRetry(page, 3);
     await sleep(3500);
     await page.click('#start-btn');
     await sleep(300);
@@ -228,11 +234,61 @@ function serve() {
     }
     await sleep(800);
     results.hidden = hiddenVisible && await page.evaluate(() => window.Game.state.cards.indexOf('haqimiao') >= 0);
-
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
-
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });
     console.log('截图: /tmp/zhili_niu_smoke.png');
+
+    // 手机触屏版冒烟（模拟 iPhone 视口 + 触屏）——先关掉桌面页释放 WebGL 资源
+    await page.close();
+    const mob = await browser.newPage();
+    await mob.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+    const mErr = [];
+    mob.on('pageerror', e => mErr.push(e.message));
+    await mob.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'load', timeout: 60000 });
+    await sleep(3500);
+    await mob.tap('#start-btn');
+    await sleep(400);
+    const touchUiShown = await mob.$eval('#touch-ui', el => !el.classList.contains('hidden'));
+    // 左半屏摇杆：手指上推 → 前进
+    const moved = await mob.evaluate(async () => {
+      const G = window.Game;
+      const z0 = G.player.position.z;
+      const el = document.body;
+      const mk = (type, x, y, id) => {
+        const t = new Touch({ identifier: id, target: el, clientX: x, clientY: y });
+        el.dispatchEvent(new TouchEvent(type, {
+          touches: (type === 'touchstart' || type === 'touchmove') ? [t] : [],
+          changedTouches: [t], bubbles: true, cancelable: true
+        }));
+      };
+      mk('touchstart', 60, 400, 1);
+      for (let i = 0; i < 5; i++) { mk('touchmove', 60, 300, 1); await new Promise(r => setTimeout(r, 120)); }
+      mk('touchend', 60, 300, 1);
+      await new Promise(r => setTimeout(r, 300));
+      return Math.abs(G.player.position.z - z0) > 0.5;
+    });
+    // 交互按钮
+    await mob.evaluate(() => { window.Game.player.position.set(-2.2, 0, 0.5); });
+    await sleep(300);
+    await mob.tap('#btn-interact');
+    await sleep(400);
+    const dlgOn = await mob.evaluate(() => window.Dialogue.isActive());
+    // 右半屏拖动 → 转视角
+    const cam1 = await mob.evaluate(() => window.Game.camera.position.x);
+    await mob.evaluate(() => {
+      const el = document.body;
+      const mk = (type, x, y) => {
+        const t = new Touch({ identifier: 2, target: el, clientX: x, clientY: y });
+        el.dispatchEvent(new TouchEvent(type, { touches: [t], changedTouches: [t], bubbles: true, cancelable: true }));
+      };
+      mk('touchstart', 300, 400);
+      mk('touchmove', 350, 400);
+      mk('touchend', 350, 400);
+    });
+    await sleep(400);
+    const cam2 = await mob.evaluate(() => window.Game.camera.position.x);
+    results.mobile = touchUiShown && moved && dlgOn && Math.abs(cam2 - cam1) > 0.3 && mErr.length === 0;
+
   } catch (e) {
     errors.push('exception: ' + e.message);
   }

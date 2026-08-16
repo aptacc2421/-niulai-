@@ -14,7 +14,7 @@
 
 ## 🎮 在线试玩
 
-👉 **https://aptacc2421.github.io/-niulai-/** —— 点开就能玩，什么都不用装（GitHub Pages 部署）
+👉 **https://aptacc2421.github.io/-niulai-/** —— 点开就能玩，什么都不用装（GitHub Pages 部署，**手机浏览器打开自动进触屏模式**）
 
 ## 文档
 

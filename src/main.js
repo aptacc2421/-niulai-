@@ -16,7 +16,8 @@
   var G = {
     scene: null, camera: null, renderer: null,
     state: { stand: 10, cards: [], tickets: 0, shedSnake: 0, stubs: [], patternSeen: [], milk: 0, xiugouTalked: false, seatFixed: false, saveJoked: false },
-    npcMeshes: {}
+    npcMeshes: {},
+    touchInput: { x: 0, z: 0 }   // 手机摇杆输入（x=左右，z=前后）
   };
   window.Game = G;
 
@@ -48,6 +49,10 @@
     } catch (e) {}
   }
   G.save = save;
+  // 触屏/外部接口（手机控制层调用）
+  G.interact = function () { interact(); };
+  G.orbit = function (dx) { camYaw += dx * 0.005; };
+  G.toggleDirector = function () { toggleDirectorMode(); };
 
   /* ---------------- 场景 ---------------- */
   G.scene = new THREE.Scene();
@@ -454,6 +459,7 @@
       if (keys['s'] || keys['arrowdown']) iz -= 1;
       if (keys['a'] || keys['arrowleft']) ix -= 1;
       if (keys['d'] || keys['arrowright']) ix += 1;
+      if (G.touchInput) { ix += G.touchInput.x; iz += G.touchInput.z; } // 手机摇杆
     }
     // 相机相对方向向量
     var fwd = new THREE.Vector3(Math.sin(camYaw), 0, Math.cos(camYaw));
