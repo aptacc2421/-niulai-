@@ -289,6 +289,30 @@ function serve() {
     const cam2 = await mob.evaluate(() => window.Game.camera.position.x);
     results.mobile = touchUiShown && moved && dlgOn && Math.abs(cam2 - cam1) > 0.3 && mErr.length === 0;
 
+    // 视角跟随（PUBG 式）：关掉对话 → 推摇杆 → 镜头应自动转向移动方向
+    for (let i = 0; i < 12; i++) {
+      const on = await mob.evaluate(() => window.Dialogue.isActive());
+      if (!on) break;
+      await mob.tap('#btn-interact'); await sleep(150);
+    }
+    // 传送到空旷处（避免对话按钮再触发附近 NPC）
+    await mob.evaluate(() => { window.Game.player.position.set(20, 0, 20); });
+    await sleep(400);
+    const camA = await mob.evaluate(() => ({ x: window.Game.camera.position.x, z: window.Game.camera.position.z }));
+    await mob.evaluate(async () => {
+      const el = document.body;
+      const mk = (type, x, y, id) => {
+        const t = new Touch({ identifier: id, target: el, clientX: x, clientY: y });
+        el.dispatchEvent(new TouchEvent(type, { touches: (type === 'touchstart' || type === 'touchmove') ? [t] : [], changedTouches: [t], bubbles: true, cancelable: true }));
+      };
+      mk('touchstart', 60, 400, 4);
+      for (let i = 0; i < 10; i++) { mk('touchmove', 40, 400, 4); await new Promise(r => setTimeout(r, 120)); }
+      mk('touchend', 40, 400, 4);
+      await new Promise(r => setTimeout(r, 500));
+    });
+    const camB = await mob.evaluate(() => ({ x: window.Game.camera.position.x, z: window.Game.camera.position.z }));
+    results.follow = Math.abs(camB.x - camA.x) + Math.abs(camB.z - camA.z) > 0.5;
+
   } catch (e) {
     errors.push('exception: ' + e.message);
   }

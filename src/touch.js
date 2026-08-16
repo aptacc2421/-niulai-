@@ -21,6 +21,7 @@
 
   ui.classList.remove('hidden');
   document.body.classList.add('touch-mode');
+  G.isOrbiting = function () { return orbit.active; };
 
   function setJoy(clientX, clientY) {
     var r = base.getBoundingClientRect();
