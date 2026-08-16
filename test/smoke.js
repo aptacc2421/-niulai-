@@ -260,23 +260,31 @@ function serve() {
 
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
 
-    // 隐藏作弊终端（懂的都懂）：ls 发现文件 → ./spirit.sh 灵魂出体 → 变速 → q! 归位
+    // 隐藏作弊终端（挂载式文件系统）：ls → rm 卸载 → mount 挂回 → ./spirit.sh → 变速 → q!
     await page.evaluate(() => {
       document.getElementById('ending').classList.add('hidden');   // 结局遮罩挡鼠标，先藏掉
       window.Game.player.position.set(0, 0, 0);
       window.Game.player.visible = true;
     });
-    // 打开终端（回车后保持打开，像真终端）
-    await page.keyboard.press(':');
+    await page.keyboard.press(':');   // 打开终端（回车后保持打开）
     await sleep(200);
-    await page.keyboard.type('ls');
-    await page.keyboard.press('Enter');
-    await sleep(300);
-    const lsShows = await page.evaluate(() =>
-      document.getElementById('cheat-out').textContent.indexOf('spirit.sh') >= 0);
-    await page.keyboard.type('./spirit.sh');
-    await page.keyboard.press('Enter');
-    await sleep(300);
+    const lsOutput = async () => {
+      await page.evaluate(() => { document.getElementById('cheat-out').textContent = ''; });
+      await page.keyboard.type('ls'); await page.keyboard.press('Enter'); await sleep(250);
+      return page.evaluate(() => document.getElementById('cheat-out').textContent);
+    };
+    const out1 = await lsOutput();
+    const lsShows = out1.indexOf('spirit.sh') >= 0;
+    // rm 卸载副本（拔掉）
+    await page.keyboard.type('rm spirit.sh'); await page.keyboard.press('Enter'); await sleep(200);
+    const out2 = await lsOutput();
+    const rmGone = out2.indexOf('spirit.sh') < 0;
+    // mount 挂回副本
+    await page.keyboard.type('mount spirit.sh'); await page.keyboard.press('Enter'); await sleep(200);
+    const out3 = await lsOutput();
+    const mountOk = out3.indexOf('spirit.sh') >= 0;
+    // 运行副本
+    await page.keyboard.type('./spirit.sh'); await page.keyboard.press('Enter'); await sleep(300);
     const spiritOn = await page.evaluate(() => window.Game.spirit() && !window.Game.player.visible);
     await page.keyboard.press('Escape');   // Esc 关闭终端
     await sleep(150);
@@ -306,7 +314,7 @@ function serve() {
     await page.keyboard.press('Enter');
     await sleep(300);
     const spiritOff = await page.evaluate(() => !window.Game.spirit() && window.Game.player.visible);
-    results.cheat = lsShows && spiritOn && qNoShake && pitch < -0.1 && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
+    results.cheat = lsShows && rmGone && mountOk && spiritOn && qNoShake && pitch < -0.1 && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
 
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });
     console.log('截图: /tmp/zhili_niu_smoke.png');
