@@ -20,7 +20,7 @@
     touchInput: { x: 0, z: 0 }   // 手机摇杆输入（x=左右，z=前后）
   };
   window.Game = G;
-  window.GAME_VERSION = 'v0.5.0';
+  window.GAME_VERSION = 'v0.5.1';
 
   var SAVE_KEY = 'zhili_niu_m1_v1';
 
@@ -234,12 +234,15 @@
   /* ---------------- 副本插件系统（给开发者：挂载即出现在副本广场，主线可见） ---------------- */
   var PLZ = { x: 12, z: 20 };
   var dungeonInstances = {};
+  var inDungeon = false;
+  var currentDungeon = null;
   G.dungeonInstances = dungeonInstances;
+  G.inDungeon = function () { return inDungeon; };
   function mountDungeon(name, silent) {
     if (dungeonInstances[name]) return;
     var reg = window.Dungeons.REGISTRY[name];
     if (!reg) return;
-    var slot = { x: PLZ.x + Object.keys(dungeonInstances).length * 3.6 - 1.8, z: PLZ.z };
+    var slot = { x: PLZ.x + VFS.mountedDungeons.indexOf(name) * 3.6 - 1.8, z: PLZ.z };
     var api = {
       scene: G.scene, pos: slot,
       makeSignTex: function (lines, w, h, bg, fg) {
@@ -248,8 +251,15 @@
     };
     var content = reg.build ? reg.build(api) : null;
     if (content) G.scene.add(content);
-    var portal = window.Dungeons.buildPortal(G.scene, reg.name, slot);
-    dungeonInstances[name] = { portal: portal, content: content, name: reg.name, slot: slot };
+    // 传送门可偏移（放在副本门口），进入点/房间边界相对 slot
+    var po = reg.portalOffset || [0, 0];
+    var portalPos = { x: slot.x + po[0], z: slot.z + po[1] };
+    var portal = window.Dungeons.buildPortal(G.scene, reg.name, portalPos);
+    dungeonInstances[name] = {
+      portal: portal, content: content, name: reg.name, slot: slot, portalPos: portalPos,
+      enter: reg.enterPos || [0, 0],
+      bounds: reg.boundsRel ? { x1: slot.x + reg.boundsRel.x1, x2: slot.x + reg.boundsRel.x2, z1: slot.z + reg.boundsRel.z1, z2: slot.z + reg.boundsRel.z2 } : null
+    };
     if (!silent) window.Dialogue.toast('已挂载副本「' + reg.name + '」：副本广场出现传送门');
   }
   function unmountDungeon(name) {
@@ -278,6 +288,20 @@
   };
   // 初始挂载全部副本（主线副本广场直接显示）
   window.Dungeons.names().forEach(function (n) { mountDungeon(n, true); });
+  // 走出副本房间 → 自动离开副本（setInterval，rAF 被节流时也生效）
+  setInterval(function () {
+    if (!inDungeon || !currentDungeon) return;
+    var inst = dungeonInstances[currentDungeon];
+    if (!inst) { inDungeon = false; currentDungeon = null; return; }
+    var cb = inst.bounds;
+    if (cb && (player.position.x < cb.x1 || player.position.x > cb.x2 ||
+               player.position.z < cb.z1 || player.position.z > cb.z2)) {
+      inDungeon = false;
+      var dn = currentDungeon;
+      currentDungeon = null;
+      window.Dialogue.toast('离开副本「' + inst.name + '」，回到副本广场');
+    }
+  }, 400);
 
   function vfsNorm(p) {
     var parts = [];
@@ -610,12 +634,14 @@
     var it = nearestInteractable();
     if (!it) return;
     if (it.kind === 'dungeon') {
-      // 进入副本（挂载的副本）
+      // 进入副本（传送进副本内部；走出去自动离开）
       var inst = dungeonInstances[it.ref];
       var reg = window.Dungeons.REGISTRY[it.ref];
       if (inst && reg) {
-        player.position.set(inst.slot.x, 0, inst.slot.z);
-        window.Dialogue.toast('进入副本「' + inst.name + '」：' + reg.desc);
+        player.position.set(inst.slot.x + inst.enter[0], 0, inst.slot.z + inst.enter[1]);
+        inDungeon = true;
+        currentDungeon = it.ref;
+        window.Dialogue.toast('进入副本「' + inst.name + '」：' + reg.desc + (inst.bounds ? '（想出去就往墙外走）' : ''));
       }
       return;
     }
@@ -916,7 +942,7 @@
 
     // 相机：镜头高度 = 站立值；镜头相对 camYaw 平滑跟随（不再被朝向甩来甩去）
     var camH = 0.5 + (G.state.stand / 100) * 1.75;
-    var camDist = 6.5;
+    var camDist = inDungeon ? 4.6 : 6.5;   // 副本内镜头拉近（房间小，别穿墙）
     var camX = player.position.x - Math.sin(camYaw) * camDist;
     var camZ = player.position.z - Math.cos(camYaw) * camDist;
     camX += Math.sin(t * 3.1) * 0.02; camZ += Math.cos(t * 2.7) * 0.02; // 手持抖动

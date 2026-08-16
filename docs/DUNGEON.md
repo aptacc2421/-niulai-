@@ -23,6 +23,9 @@
 '你的副本.sh': {          // 键名 = 终端里的挂载文件名（如 mydungeon.sh）
   name: '副本显示名',      // 传送门牌子上、终端 ls 里显示的名字
   desc: '一句话介绍',      // cat 文件时 / 进入副本时显示
+  portalOffset: [0, 6],   // 可选：传送门放副本门口（相对格子坐标的偏移）
+  enterPos: [0, 0],       // 可选：进入后玩家落在哪里（相对格子坐标）
+  boundsRel: { x1: -6, x2: 6, z1: -5, z2: 5 },  // 可选：走出这个范围 = 离开副本（自动退出）
   build: function (api) {
     // api: { scene, pos: {x, z}（本副本在广场的坐标）, makeSignTex(lines,w,h,bg,fg) }
     var g = new THREE.Group();

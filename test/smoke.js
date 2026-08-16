@@ -36,7 +36,6 @@ function serve() {
   const port = server.address().port;
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
@@ -49,6 +48,7 @@ function serve() {
   }
   try {
     await gotoRetry(page, 3);
+    await page.setViewport({ width: 1280, height: 800 });   // 必须在 goto 之后（否则 networkidle0 挂起）
     await sleep(3500);
     await page.click('#start-btn');
     await sleep(300);
@@ -330,17 +330,27 @@ function serve() {
     const dRemoved = dOut2.indexOf('garden.sh') < 0 && await page.evaluate(() => !window.Game.dungeonInstances['garden.sh']);
     await page.keyboard.type('mount garden.sh'); await page.keyboard.press('Enter'); await sleep(200);
     const dMounted2 = await page.evaluate(() => !!window.Game.dungeonInstances['garden.sh']);
-    // 进入副本：关终端 → 走到传送门按 E
+    // 进入副本（edu 教室）：关终端 → 走到传送门按 E → 落在教室内部 → 走出边界自动离开
     await page.keyboard.press('Escape'); await sleep(150);
-    await page.evaluate(() => { window.Game.player.position.set(12, 0, 20); });
+    await page.evaluate(() => {
+      const inst = window.Game.dungeonInstances['edu.sh'];
+      window.Game.player.position.set(inst.portalPos.x, 0, inst.portalPos.z);
+    });
     await sleep(300);
     await page.keyboard.press('e'); await sleep(300);
     const dEntered = await page.evaluate(() => {
-      const inst = window.Game.dungeonInstances['garden.sh'];
+      const inst = window.Game.dungeonInstances['edu.sh'];
       const p = window.Game.player.position;
-      return inst && Math.abs(p.x - inst.slot.x) < 0.6 && Math.abs(p.z - inst.slot.z) < 0.6;
+      return inst && window.Game.inDungeon() &&
+        Math.abs(p.x - (inst.slot.x + inst.enter[0])) < 0.6 &&
+        Math.abs(p.z - (inst.slot.z + inst.enter[1])) < 0.6;
     });
-    results.dungeon = dMounted && dRemoved && dMounted2 && dEntered;
+    // 走出教室 → 自动离开副本
+    await page.evaluate(() => { window.Game.player.position.set(0, 0, 0); });   // 传送到远处（(20,20) 还在教室边界内）
+    await sleep(500);
+    const dExited = await page.evaluate(() => !window.Game.inDungeon());
+    results.dungeon = dMounted && dRemoved && dMounted2 && dEntered && dExited;
+    console.log('[DBG] dungeon:', JSON.stringify({ dMounted, dRemoved, dMounted2, dEntered, dExited }));
 
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });
     console.log('截图: /tmp/zhili_niu_smoke.png');
