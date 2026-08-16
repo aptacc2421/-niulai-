@@ -551,6 +551,14 @@
       }
     }
 
+    // 视角跟随（PUBG 式）：移动时镜头慢慢转到移动方向；手动拖动（鼠标右键/触屏右半屏）时暂停，松手后继续跟随
+    if (moving && !orbitDrag && !(G.isOrbiting && G.isOrbiting())) {
+      var followDiff = facing - camYaw;
+      while (followDiff > Math.PI) followDiff -= Math.PI * 2;
+      while (followDiff < -Math.PI) followDiff += Math.PI * 2;
+      camYaw += followDiff * Math.min(1, dt * 4);
+    }
+
     // 相机：镜头高度 = 站立值；镜头相对 camYaw 平滑跟随（不再被朝向甩来甩去）
     var camH = 0.5 + (G.state.stand / 100) * 1.75;
     var camDist = 6.5;
