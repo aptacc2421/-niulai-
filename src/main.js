@@ -20,6 +20,7 @@
     touchInput: { x: 0, z: 0 }   // 手机摇杆输入（x=左右，z=前后）
   };
   window.Game = G;
+  window.GAME_VERSION = 'v0.4.7';
 
   var SAVE_KEY = 'zhili_niu_m1_v1';
 
@@ -298,8 +299,8 @@
 
   window.addEventListener('keydown', function (e) {
     if (cheatOpen) {
-      if (e.key === 'Enter') { runCheat(); cheatInput.value = ''; }  // 执行后保持打开（真终端行为）
-      else if (e.key === 'Escape' || e.key === ':') closeCheat();
+      if (e.key === 'Enter' && !e.isComposing) { runCheat(); cheatInput.value = ''; }  // 执行后保持打开（真终端行为）
+      else if (e.key === 'Escape' || e.key === ':' || e.key === '：') closeCheat();
       return; // 控制台打开时忽略游戏键
     }
     if (['Tab', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) >= 0) e.preventDefault();
@@ -309,7 +310,7 @@
     if (e.key === '[' || e.key === '{') setSpeed(Math.max(0.25, timeScale / 2));
     if (e.key === '0') setSpeed(1);
     // 隐藏控制台
-    if (e.key === ':') { e.preventDefault(); openCheat(); return; }
+    if (e.key === ':' || e.key === '：') { e.preventDefault(); openCheat(); return; }
     // 灵魂出体模式下：只保留移动/升降键，屏蔽 E/Q/R/M/F/K 等快捷键（Q 只下降、不再甩镜头）
     if (spirit) return;
     if (e.key === 'e' || e.key === 'E' || e.key === ' ') {
@@ -973,6 +974,9 @@
     window.Dialogue.updateHud();
     window.Dialogue.toast('M1 原型：去找牛们聊聊天，攒站立值');
   });
+
+  // 标题屏显示版本号（用于判断是否是最新部署）
+  document.getElementById('title-version').textContent = 'v' + (window.GAME_VERSION || '').replace('v', '');
 
   loadSave();
   window.Dialogue.updateHud();
