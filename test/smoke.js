@@ -261,7 +261,11 @@ function serve() {
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
 
     // 隐藏作弊终端（懂的都懂）：ls 发现文件 → ./spirit.sh 灵魂出体 → 变速 → q! 归位
-    await page.evaluate(() => { window.Game.player.position.set(0, 0, 0); window.Game.player.visible = true; });
+    await page.evaluate(() => {
+      document.getElementById('ending').classList.add('hidden');   // 结局遮罩挡鼠标，先藏掉
+      window.Game.player.position.set(0, 0, 0);
+      window.Game.player.visible = true;
+    });
     const runCmd = async (cmd) => {
       await page.keyboard.press(':');
       await sleep(200);
@@ -274,6 +278,19 @@ function serve() {
       document.getElementById('cheat-out').textContent.indexOf('spirit.sh') >= 0);
     await runCmd('./spirit.sh');
     const spiritOn = await page.evaluate(() => window.Game.spirit() && !window.Game.player.visible);
+    // 灵魂模式下 Q 只下降、不应甩镜头（修复冲突）
+    const yaw0 = await page.evaluate(() => window.Game.yaw());
+    await page.keyboard.press('q');
+    await sleep(150);
+    const yaw1 = await page.evaluate(() => window.Game.yaw());
+    const qNoShake = Math.abs(yaw1 - yaw0) < 0.01;
+    // 鼠标右键竖直拖动 → 俯仰（低头）
+    await page.mouse.move(640, 400);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.move(640, 500, { steps: 5 });
+    await page.mouse.up({ button: 'right' });
+    await sleep(200);
+    const pitch = await page.evaluate(() => window.Game.pitch());
     await page.keyboard.press(']');
     const ts2 = await page.evaluate(() => window.Game.timeScale());
     await page.keyboard.press('[');
@@ -283,7 +300,7 @@ function serve() {
     const ts1 = await page.evaluate(() => window.Game.timeScale());
     await runCmd('q!');
     const spiritOff = await page.evaluate(() => !window.Game.spirit() && window.Game.player.visible);
-    results.cheat = lsShows && spiritOn && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
+    results.cheat = lsShows && spiritOn && qNoShake && pitch < -0.1 && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
 
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });
     console.log('截图: /tmp/zhili_niu_smoke.png');

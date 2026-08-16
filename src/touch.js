@@ -16,7 +16,7 @@
   var base = document.getElementById('joy-base');
   var knob = document.getElementById('joy-knob');
   var joy = { active: false, id: -1 };
-  var orbit = { active: false, id: -1, lastX: 0 };
+  var orbit = { active: false, id: -1, lastX: 0, lastY: 0 };
   var HALF = window.innerWidth * 0.5;
 
   ui.classList.remove('hidden');
@@ -54,7 +54,7 @@
       joy.active = true; joy.id = t.identifier;
       setJoy(t.clientX, t.clientY);
     } else if (t.clientX >= HALF && !orbit.active) {
-      orbit.active = true; orbit.id = t.identifier; orbit.lastX = t.clientX;
+      orbit.active = true; orbit.id = t.identifier; orbit.lastX = t.clientX; orbit.lastY = t.clientY;
     }
   }
 
@@ -67,8 +67,9 @@
       var t = e.changedTouches[i];
       if (joy.active && t.identifier === joy.id) setJoy(t.clientX, t.clientY);
       if (orbit.active && t.identifier === orbit.id) {
-        G.orbit(t.clientX - orbit.lastX);
+        G.orbit(t.clientX - orbit.lastX, t.clientY - orbit.lastY);   // 水平转向 + 竖直俯仰
         orbit.lastX = t.clientX;
+        orbit.lastY = t.clientY;
       }
     }
     e.preventDefault(); // 防止页面滚动
