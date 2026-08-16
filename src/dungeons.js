@@ -24,6 +24,8 @@
     'garden.sh': {
       name: '牛来后花园',
       desc: '演示副本：一圈栅栏 + 八朵花 + 一头看门牛。复制这个模板，写出你的副本吧。',
+      enterPos: [0, 0],
+      boundsRel: { x1: -4, x2: 4, z1: -4, z2: 4 },
       build: function (api) {
         var g = new THREE.Group();
         g.position.set(api.pos.x, 0, api.pos.z);
@@ -67,36 +69,48 @@
       }
     },
 
-    // ---- 中式教育体验馆（玩梗副本，请勿当真） ----
+    // ---- 中式教育体验馆（玩梗副本，请勿当真）----
     'edu.sh': {
       name: '中式教育体验馆',
-      desc: '书山有路勤为径，题海无涯苦作舟。\n在这里重温被《五年高考三年模拟》支配的恐惧。（纯玩梗，学累了就出来吧）',
+      desc: '书山有路勤为径，题海无涯苦作舟。\n在这里重温被《五年高考三年模拟》支配的恐惧。想出去就往墙外走。',
+      portalOffset: [0, 6.5],          // 传送门在教室门口（南侧）
+      enterPos: [0, -1],               // 进入后落在教室中间
+      boundsRel: { x1: -6.5, x2: 6.5, z1: -5.5, z2: 5.5 },   // 走出这个范围 = 离开副本
       build: function (api) {
         var g = new THREE.Group();
         g.position.set(api.pos.x, 0, api.pos.z);
         var wood = new THREE.MeshLambertMaterial({ color: 0x8a6a42 });
+        var wallMat = new THREE.MeshLambertMaterial({ color: 0xc8b088, side: THREE.DoubleSide });
         var deskMat = new THREE.MeshLambertMaterial({ color: 0xa08050 });
         var paperMat = new THREE.MeshLambertMaterial({ color: 0xf0ece0 });
-        // 黑板（今日作业）
+        // ---- 教室四面墙（高 3.4，南墙留门洞）----
+        var wall = function (w, h, d, x, y, z) {
+          var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+          m.position.set(x, y, z);
+          g.add(m);
+        };
+        wall(13, 3.4, 0.3, 0, 1.7, -5.5);                  // 北墙（黑板墙）
+        wall(0.3, 3.4, 11, -6.5, 1.7, 0);                  // 西墙
+        wall(0.3, 3.4, 11, 6.5, 1.7, 0);                   // 东墙
+        wall(4.9, 3.4, 0.3, -3.9, 1.7, 5.5);               // 南墙左段
+        wall(4.9, 3.4, 0.3, 3.9, 1.7, 5.5);                // 南墙右段
+        wall(3.2, 1.7, 0.3, 0, 2.5, 5.5);                  // 门洞上方的过梁
+        // ---- 室内 ----
+        // 黑板（北墙内面）
         var board = new THREE.Mesh(new THREE.BoxGeometry(5, 2.4, 0.15),
           new THREE.MeshBasicMaterial({ map: api.makeSignTex(['今日作业', '《五年高考三年模拟》第 1-500 页', '明天交'], 256, 128, '#1a3a2a', '#e8f0d8') }));
-        board.position.set(0, 2.4, -3.3);
+        board.position.set(0, 2.4, -5.35);
         g.add(board);
-        [-2.4, 2.4].forEach(function (lx) {
-          var leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.15), wood);
-          leg.position.set(lx, 0.6, -3.3);
-          g.add(leg);
-        });
-        // 衡水名言（黑板顶上）
-        var motto = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.0, 0.1),
+        // 衡水名言（北墙上）
+        var motto = new THREE.Mesh(new THREE.BoxGeometry(4, 1.0, 0.1),
           new THREE.MeshBasicMaterial({ map: api.makeSignTex(['只要学不死', '就往死里学'], 256, 80, '#4a2a1a', '#ffe89a') }));
-        motto.position.set(0, 3.5, -3.25);
+        motto.position.set(0, 4.0, -5.35);
         g.add(motto);
         // 两排课桌：每桌一摞卷子 + 一本五三
         for (var r = 0; r < 2; r++) {
           for (var c = 0; c < 3; c++) {
-            var dx = (c - 1) * 1.7, dz = 0.9 + r * 1.7;
-            var desk = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.8, 0.6), deskMat);
+            var dx = (c - 1) * 1.9, dz = -1.4 + r * 1.9;
+            var desk = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.6), deskMat);
             desk.position.set(dx, 0.4, dz); g.add(desk);
             var papers = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.72), paperMat);
             papers.position.set(dx, 0.9, dz); g.add(papers);
@@ -109,50 +123,51 @@
         var teacher = null, nerd = null, pointer = null;
         if (window.makeCow) {
           teacher = window.makeCow({ upright: true, crawl: false, seed: 999, colors: { body: 0x5a5a6a, patch: 0x3a3a4a } });
-          teacher.position.set(-1.6, 0, -1.8);
-          teacher.rotation.y = -0.5;
+          teacher.position.set(-2.2, 0, -3.6);
+          teacher.rotation.y = -0.4;
           g.add(teacher);
           pointer = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1.6), wood);
-          pointer.position.set(-0.7, 1.5, -2.4);
+          pointer.position.set(-1.2, 1.5, -3.9);
           g.add(pointer);
           nerd = window.makeCow({ upright: false, crawl: true, seed: 777, colors: { body: 0xd8c8a0, patch: 0x9a8a6a } });
-          nerd.position.set(1.7, 0, 1.0);
+          nerd.position.set(1.9, 0, 0.4);
           g.add(nerd);
         }
-        // 书山（书山有路勤为径）
+        // 书山（书山有路勤为径）——角落
         var bookCols = [0x3a7a3a, 0x7a5a3a, 0x3a5a8a, 0x8a3a3a];
         var bn = 0;
         for (var layer = 0; layer < 4; layer++) {
           for (var bx2 = -layer; bx2 <= layer; bx2 += 0.9) {
             var book2 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.22, 1.1),
               new THREE.MeshLambertMaterial({ color: bookCols[bn++ % 4] }));
-            book2.position.set(bx2, 0.12 + layer * 0.24, 3.2);
+            book2.position.set(bx2, 0.12 + layer * 0.24, 4.6);
             g.add(book2);
           }
         }
         var sign1 = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.2, 0.1),
           new THREE.MeshBasicMaterial({ map: api.makeSignTex(['书山有路', '勤为径'], 256, 96, '#2a4a2a', '#ffe89a') }));
-        sign1.position.set(0, 2.7, 3.2);
+        sign1.position.set(0, 2.7, 4.55);
         g.add(sign1);
-        // 题海（题海无涯苦作舟）
-        var sea = new THREE.Mesh(new THREE.PlaneGeometry(4, 3), new THREE.MeshLambertMaterial({ color: 0x5a8ec8 }));
+        // 题海（题海无涯苦作舟）——另一个角落
+        var sea = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.6), new THREE.MeshLambertMaterial({ color: 0x5a8ec8 }));
         sea.rotation.x = -Math.PI / 2;
-        sea.position.set(3.1, 0.05, -1.2);
+        sea.position.set(-5.6, 0.05, 3.8);
         g.add(sea);
         var sign2 = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.2, 0.1),
           new THREE.MeshBasicMaterial({ map: api.makeSignTex(['题海无涯', '苦作舟'], 256, 96, '#1a3a5a', '#cfd8e8') }));
-        sign2.position.set(3.1, 1.7, 0.8);
+        sign2.position.set(-5.4, 1.7, 2.4);
         g.add(sign2);
-        // 高考倒计时
+        // 高考倒计时（东墙内面）
         var count = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.5, 0.1),
           new THREE.MeshBasicMaterial({ map: api.makeSignTex(['距离高考还有', '0 天', '（每天都在倒计时）'], 256, 96, '#5a1a1a', '#ffe89a') }));
-        count.position.set(-3.1, 2.2, -0.6);
+        count.position.set(6.35, 2.3, 0);
+        count.rotation.y = -Math.PI / 2;
         g.add(count);
         // 动画：老师踱步/教鞭指来指去/学霸点头刷题
         g.userData.update = function (t) {
           if (teacher) {
-            teacher.rotation.y = -0.5 + Math.sin(t * 1.2) * 0.12;
-            pointer.position.x = -0.7 + Math.sin(t * 1.2) * 0.35;
+            teacher.rotation.y = -0.4 + Math.sin(t * 1.2) * 0.12;
+            pointer.position.x = -1.2 + Math.sin(t * 1.2) * 0.35;
           }
           if (nerd) nerd.rotation.x = Math.sin(t * 3) * 0.06;
         };
