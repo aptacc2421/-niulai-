@@ -92,6 +92,13 @@
     </div>
   </div>
 
+  <!-- 隐藏作弊控制台（懂的都懂，输入像 sudo 密码一样被 * 遮蔽） -->
+  <div id="cheat-console" class="hidden">
+    <span class="cheat-prompt">:</span>
+    <input id="cheat-input" type="text" autocomplete="off" spellcheck="false" maxlength="40">
+  </div>
+  <div id="speed-hud" class="hidden">⚡×<span id="speed-val">1</span></div>
+
   <script src="lib/three.min.js"></script>
   <script src="src/data.js"></script>
   <script src="src/audio.js"></script>
