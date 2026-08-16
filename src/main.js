@@ -20,7 +20,7 @@
     touchInput: { x: 0, z: 0 }   // 手机摇杆输入（x=左右，z=前后）
   };
   window.Game = G;
-  window.GAME_VERSION = 'v0.4.7';
+  window.GAME_VERSION = 'v0.4.8';
 
   var SAVE_KEY = 'zhili_niu_m1_v1';
 
@@ -231,26 +231,94 @@
     timeScale = seq[(seq.indexOf(timeScale) + 1) % seq.length];
     cheatPrint('speed.conf：当前 ×' + timeScale);
   }
-  var CHEAT_FILES = {
-    'spirit.sh':    { desc: '#!/bin/bash\n# 灵魂出体（肉身留在原地）\n# 用法：./spirit.sh', run: toggleSpirit },
-    'yes.bin':      { desc: '二进制：哞。', run: toggleYes },
-    'speed.conf':   { desc: '变速配置：当前 ×1（] 加速 / [ 减速 / 0 复位）', run: cycleSpeed },
-    'rm_rf.tar':    { desc: '⚠ 危险文件：删库跑路。', run: rmRf },
-    'npm.sh':       { desc: '#!/bin/bash\nnpm install\n# 会装上 217 个依赖（216 个用不上）', run: npmInstall },
-    'force_push.sh':{ desc: '#!/bin/bash\ngit push --force\n# 没人拦得住你。', run: forcePush },
-    'hint.txt':     { desc: '提示：cat 一下每个文件，看看它们是干嘛的。', run: function () { cheatPrint('提示：cat 一下每个文件，看看它们是干嘛的。'); } }
+  // ---- 假文件系统（挂载式：副本=文件，/dungeons 是挂载区，/lib 是库） ----
+  var VFS = {
+    cwd: '/dungeons',
+    lib: {
+      'spirit.sh':     { desc: '#!/bin/bash\n# 灵魂出体（肉身留在原地）\n# 用法：./spirit.sh', run: toggleSpirit },
+      'speed.conf':    { desc: '变速配置：当前 ×' + timeScale + '（] 加速 / [ 减速 / 0 复位）', run: cycleSpeed },
+      'yes.bin':       { desc: '二进制：哞。', run: toggleYes },
+      'npm.sh':        { desc: '#!/bin/bash\nnpm install\n# 会装上 217 个依赖（216 个用不上）', run: npmInstall },
+      'force_push.sh': { desc: '#!/bin/bash\ngit push --force\n# 没人拦得住你。', run: forcePush },
+      'rm_rf.tar':     { desc: '⚠ 危险文件：删库跑路。', run: rmRf },
+      'hint.txt':      { desc: '提示：cat 一下每个文件。\n提示：mount 挂载 / rm 拔掉，试试看。', run: function () { cheatPrint('提示：cat 一下每个文件，mount/rm 试试看。'); } }
+    },
+    mounted: ['spirit.sh', 'speed.conf', 'yes.bin', 'npm.sh', 'force_push.sh', 'rm_rf.tar', 'hint.txt']
   };
-
+  function vfsNorm(p) {
+    var parts = [];
+    (p || '').split('/').forEach(function (s) {
+      if (!s || s === '.') return;
+      if (s === '..') parts.pop();
+      else parts.push(s);
+    });
+    return '/' + parts.join('/');
+  }
+  function vfsName(p) { return String(p).replace(/^\/+/, '').split('/').pop(); }
+  function vfsLs(dir) {
+    var d = vfsNorm(dir);
+    if (d === '/') { cheatPrint('bin/   dungeons/   lib/'); return; }
+    if (d === '/dungeons') {
+      cheatPrint('总用量 42');
+      if (!VFS.mounted.length) cheatPrint('（空——去 /lib 看看有什么可 mount 的）');
+      VFS.mounted.forEach(function (n) {
+        var size = (n.length * 13 + 128) % 900 + 128;
+        cheatPrint('-rwxr-xr-x 1 root root ' + size + ' 牛来 ' + n);
+      });
+      return;
+    }
+    if (d === '/lib') {
+      cheatPrint('总用量 64');
+      Object.keys(VFS.lib).forEach(function (n) {
+        cheatPrint('-r--r--r-- 1 root root 512 牛来 ' + n + (VFS.mounted.indexOf(n) >= 0 ? '  [已挂载]' : ''));
+      });
+      return;
+    }
+    if (d === '/bin') { cheatPrint('ls  cat  rm  mount  cd  pwd  exit  wq  q!'); return; }
+    cheatPrint('ls: ' + d + ': 没有那个目录');
+  }
+  function vfsCat(name) {
+    var n = vfsName(name);
+    if (!VFS.lib[n]) { cheatPrint('cat: ' + name + ': 没有那个文件'); return; }
+    cheatPrint(VFS.lib[n].desc);
+  }
+  function vfsRun(name) {
+    var n = vfsName(name);
+    if (!VFS.lib[n]) { cheatPrint('bash: ' + name + ': 没有那个文件或目录'); return; }
+    if (VFS.mounted.indexOf(n) < 0) { cheatPrint('bash: ' + name + ': 未挂载（试试 mount ' + n + '）'); return; }
+    if (VFS.lib[n].run) VFS.lib[n].run(); else cheatPrint(VFS.lib[n].desc);
+  }
+  function vfsRm(argStr) {
+    var args = (argStr || '').trim().split(/\s+/).filter(Boolean);
+    if (!args.length) { cheatPrint('用法：rm <文件名>（从 /dungeons 卸载）'); return; }
+    if (args.indexOf('-rf') >= 0 && args[args.length - 1] === '/') {
+      cheatPrint('rm: 拒绝删除根目录（就算这是游戏也不行）');
+      return;
+    }
+    var n = vfsName(args[args.length - 1]);
+    if (!VFS.lib[n]) { cheatPrint('rm: ' + n + ': 没有那个文件'); return; }
+    var i = VFS.mounted.indexOf(n);
+    if (i < 0) { cheatPrint('rm: ' + n + ': 没挂载，拔啥呢'); return; }
+    VFS.mounted.splice(i, 1);
+    cheatPrint('已卸载 /dungeons/' + n + '（拔掉电源了）');
+  }
+  function vfsMount(name) {
+    var n = vfsName(name);
+    if (!n) { cheatPrint('用法：mount <文件名>（从 /lib 挂到 /dungeons）'); return; }
+    if (!VFS.lib[n]) { cheatPrint('mount: /lib/' + n + ' 不存在'); return; }
+    if (VFS.mounted.indexOf(n) >= 0) { cheatPrint('mount: /dungeons/' + n + ' 已经挂载了'); return; }
+    VFS.mounted.push(n);
+    cheatPrint('已挂载 /dungeons/' + n);
+  }
+  function vfsCd(p) {
+    if (!p || p === '~') { VFS.cwd = '/dungeons'; return; }
+    var d = vfsNorm((p[0] === '/' ? '' : VFS.cwd + '/') + p);
+    if (d === '/' || d === '/dungeons' || d === '/lib' || d === '/bin') VFS.cwd = d;
+    else cheatPrint('cd: ' + p + ': 没有那个目录');
+  }
   function cheatPrint(text) {
     cheatOut.textContent += (cheatOut.textContent ? '\n' : '') + text;
     cheatOut.scrollTop = cheatOut.scrollHeight;
-  }
-  function cheatLs() {
-    cheatPrint('总用量 42');
-    Object.keys(CHEAT_FILES).forEach(function (f) {
-      var size = (f.length * 13 + 128) % 900 + 128;
-      cheatPrint('-rwxr-xr-x 1 root root ' + size + ' 牛来 ' + f);
-    });
   }
   function openCheat() {
     cheatOpen = true;
@@ -268,33 +336,23 @@
   function runCheat() {
     var c = (cheatInput.value || '').trim();
     cheatPrint('$ ' + c);   // 回显（真终端风格）
-    var lc = c.toLowerCase();
     if (!c) return;
-    if (lc === 'ls' || lc === 'ls -la') { cheatLs(); return; }
-    if (lc === 'exit' || lc === 'quit') { closeCheat(); return; }
-    if (lc === 'pwd') { cheatPrint('/home/niulai'); return; }
-    if (lc === 'cd' || lc === 'cd /') { cheatPrint('已进入根目录（别乱删）'); return; }
-    if (lc === 'cd ..') { cheatPrint('向上一步：宇宙'); return; }
-    if (lc.indexOf('cat ') === 0) {
-      var cf = c.slice(4).trim();
-      if (CHEAT_FILES[cf]) cheatPrint(CHEAT_FILES[cf].desc);
-      else cheatPrint('cat: ' + cf + ': 没有那个文件');
-      return;
-    }
-    if (lc.indexOf('./') === 0 || lc.indexOf('sh ') === 0) {
-      var ef = lc.indexOf('./') === 0 ? c.slice(2).trim() : c.slice(3).trim();
-      if (!CHEAT_FILES[ef]) { cheatPrint('bash: ' + c + ': 没有那个文件或目录'); return; }
-      CHEAT_FILES[ef].run();
-      return;
-    }
-    // 直接命令（vim 派 / 系统派都兼容）
-    if (lc === 'wq') { toggleSpirit(); return; }
-    if (lc === 'q!') { spirit = false; player.visible = true; camPitch = 0; return; }
-    if (lc === 'yes') { toggleYes(); return; }
-    if (lc === 'sudo rm -rf /' || lc === 'rm -rf /') { rmRf(); return; }
-    if (lc === 'npm install') { npmInstall(); return; }
-    if (lc === 'git push --force') { forcePush(); return; }
-    cheatPrint('bash: ' + c + ': 未找到命令（提示：试试 ls）');
+    if (c.toLowerCase().indexOf('sudo ') === 0) c = c.slice(5).trim();  // sudo 前缀（梗）
+    var parts = c.trim().split(/\s+/);
+    var cmd = parts[0].toLowerCase();
+    var arg = parts.slice(1).join(' ');
+    if (cmd === 'ls') { vfsLs(arg || VFS.cwd); return; }
+    if (cmd === 'cat') { if (arg) vfsCat(arg); else cheatPrint('用法：cat <文件>'); return; }
+    if (cmd === 'rm') { vfsRm(arg); return; }
+    if (cmd === 'mount') { vfsMount(arg); return; }
+    if (cmd === 'cd') { vfsCd(arg); return; }
+    if (cmd === 'pwd') { cheatPrint(VFS.cwd); return; }
+    if (cmd === 'exit' || cmd === 'quit') { closeCheat(); return; }
+    if (cmd === 'wq') { toggleSpirit(); return; }
+    if (cmd === 'q!') { spirit = false; player.visible = true; camPitch = 0; return; }
+    if (cmd.indexOf('./') === 0) { vfsRun(cmd.slice(2) + (arg ? ' ' + arg : '')); return; }
+    if (cmd === 'sh') { vfsRun(arg); return; }
+    cheatPrint('bash: ' + cmd + ': 未找到命令（提示：试试 ls）');
   }
 
   window.addEventListener('keydown', function (e) {
