@@ -52,8 +52,13 @@
   G.save = save;
   // 触屏/外部接口（手机控制层调用）
   G.interact = function () { interact(); };
-  G.orbit = function (dx) { camYaw += dx * 0.005; };
+  G.orbit = function (dx, dy) {
+    camYaw += dx * 0.005;
+    if (dy !== undefined) camPitch = Math.max(-1.2, Math.min(1.2, camPitch - dy * 0.005)); // 竖直拖动 = 俯仰
+  };
   G.toggleDirector = function () { toggleDirectorMode(); };
+  G.yaw = function () { return camYaw; };
+  G.pitch = function () { return camPitch; };
 
   /* ---------------- 场景 ---------------- */
   G.scene = new THREE.Scene();
@@ -205,7 +210,7 @@
 
   // 假文件系统（作弊清单藏在里面，靠 ls 自己发现）
   var CHEAT_HANDLERS = {};
-  function toggleSpirit() { spirit = !spirit; player.visible = !spirit; }
+  function toggleSpirit() { spirit = !spirit; player.visible = !spirit; if (!spirit) camPitch = 0; }
   function toggleYes() { autoBoom = !autoBoom; }
   function rmRf() {
     window.Dialogue.toast('rm -rf /：你已删库跑路（存档清空，系统即将重启）');
@@ -281,7 +286,7 @@
     }
     // 直接命令（vim 派 / 系统派都兼容）
     if (lc === 'wq') { toggleSpirit(); return; }
-    if (lc === 'q!') { spirit = false; player.visible = true; return; }
+    if (lc === 'q!') { spirit = false; player.visible = true; camPitch = 0; return; }
     if (lc === 'yes') { toggleYes(); return; }
     if (lc === 'sudo rm -rf /' || lc === 'rm -rf /') { rmRf(); return; }
     if (lc === 'npm install') { npmInstall(); return; }
@@ -303,6 +308,8 @@
     if (e.key === '0') setSpeed(1);
     // 隐藏控制台
     if (e.key === ':') { e.preventDefault(); openCheat(); return; }
+    // 灵魂出体模式下：只保留移动/升降键，屏蔽 E/Q/R/M/F/K 等快捷键（Q 只下降、不再甩镜头）
+    if (spirit) return;
     if (e.key === 'e' || e.key === 'E' || e.key === ' ') {
       if (window.Dialogue.isActive()) window.Dialogue.advance();
       else interact();
@@ -331,15 +338,17 @@
     G.renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // 鼠标右键拖拽旋转视角
-  var orbitDrag = false, orbitLastX = 0;
+  // 鼠标右键拖拽旋转视角（水平=转向，竖直=俯仰）
+  var orbitDrag = false, orbitLastX = 0, orbitLastY = 0;
   G.renderer.domElement.addEventListener('mousedown', function (e) {
-    if (e.button === 2) { orbitDrag = true; orbitLastX = e.clientX; }
+    if (e.button === 2) { orbitDrag = true; orbitLastX = e.clientX; orbitLastY = e.clientY; }
   });
   window.addEventListener('mousemove', function (e) {
     if (orbitDrag) {
       camYaw += (e.clientX - orbitLastX) * 0.005;
+      camPitch = Math.max(-1.2, Math.min(1.2, camPitch - (e.clientY - orbitLastY) * 0.005));
       orbitLastX = e.clientX;
+      orbitLastY = e.clientY;
     }
   });
   window.addEventListener('mouseup', function (e) {
@@ -590,6 +599,7 @@
   var clock = new THREE.Clock();
   var facing = 0;
   var camYaw = 0;      // 镜头朝向（鼠标右键 / Q / R 旋转）
+  var camPitch = 0;    // 镜头俯仰（拖动上下；灵魂模式抬头/低头）
   var curSpeed = 0;    // 当前速度（加减速平滑）
 
   function loop() {
@@ -618,18 +628,20 @@
     // 灵魂出体（wq）：自由飞行，上天入地
     if (spirit) {
       player.visible = false;
-      var fdir = new THREE.Vector3().addScaledVector(fwd, iz).addScaledVector(rgt, ix);
+      // 视线方向（含俯仰，拖动上下可抬头/低头）
+      var lookDir = new THREE.Vector3(
+        Math.sin(camYaw) * Math.cos(camPitch),
+        Math.sin(camPitch),
+        Math.cos(camYaw) * Math.cos(camPitch)
+      );
+      var fdir = new THREE.Vector3().addScaledVector(lookDir, iz).addScaledVector(rgt, ix);
       if (keys['e'] || keys['E']) fdir.y += 1;   // 上升
       if (keys['q'] || keys['Q']) fdir.y -= 1;   // 下降
       if (fdir.lengthSq() > 0) {
         fdir.normalize();
         G.camera.position.addScaledVector(fdir, 7 * dt);  // 不受边界限制，能飞出地图
       }
-      G.camera.lookAt(
-        G.camera.position.x + Math.sin(camYaw) * 10,
-        G.camera.position.y,
-        G.camera.position.z + Math.cos(camYaw) * 10
-      );
+      G.camera.lookAt(G.camera.position.clone().add(lookDir));
       world.update(t);
       window.Dialogue.update();
       G.renderer.render(G.scene, G.camera);
