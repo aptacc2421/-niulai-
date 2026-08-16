@@ -266,9 +266,11 @@
   function setSpeed(v) { timeScale = v; }   // 变速静默生效
   function runCheat() {
     var c = (cheatInput.value || '').trim();
+    cheatPrint('$ ' + c);   // 回显（真终端风格）
     var lc = c.toLowerCase();
     if (!c) return;
     if (lc === 'ls' || lc === 'ls -la') { cheatLs(); return; }
+    if (lc === 'exit' || lc === 'quit') { closeCheat(); return; }
     if (lc === 'pwd') { cheatPrint('/home/niulai'); return; }
     if (lc === 'cd' || lc === 'cd /') { cheatPrint('已进入根目录（别乱删）'); return; }
     if (lc === 'cd ..') { cheatPrint('向上一步：宇宙'); return; }
@@ -296,8 +298,8 @@
 
   window.addEventListener('keydown', function (e) {
     if (cheatOpen) {
-      if (e.key === 'Enter') { runCheat(); closeCheat(); }
-      else if (e.key === 'Escape') closeCheat();
+      if (e.key === 'Enter') { runCheat(); cheatInput.value = ''; }  // 执行后保持打开（真终端行为）
+      else if (e.key === 'Escape' || e.key === ':') closeCheat();
       return; // 控制台打开时忽略游戏键
     }
     if (['Tab', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) >= 0) e.preventDefault();
