@@ -323,7 +323,8 @@ function serve() {
       return page.evaluate(() => document.getElementById('cheat-out').textContent);
     };
     const dOut1 = await dls();   // cwd=/dungeons
-    const dMounted = dOut1.indexOf('garden.sh') >= 0 && await page.evaluate(() => !!window.Game.dungeonInstances['garden.sh']);
+    const dMounted = dOut1.indexOf('garden.sh') >= 0 && dOut1.indexOf('edu.sh') >= 0 &&
+      await page.evaluate(() => !!window.Game.dungeonInstances['garden.sh'] && !!window.Game.dungeonInstances['edu.sh']);
     await page.keyboard.type('rm garden.sh'); await page.keyboard.press('Enter'); await sleep(200);
     const dOut2 = await dls();
     const dRemoved = dOut2.indexOf('garden.sh') < 0 && await page.evaluate(() => !window.Game.dungeonInstances['garden.sh']);

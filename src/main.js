@@ -20,7 +20,7 @@
     touchInput: { x: 0, z: 0 }   // 手机摇杆输入（x=左右，z=前后）
   };
   window.Game = G;
-  window.GAME_VERSION = 'v0.4.9';
+  window.GAME_VERSION = 'v0.5.0';
 
   var SAVE_KEY = 'zhili_niu_m1_v1';
 
@@ -857,6 +857,11 @@
         cr.mesh.userData.update(t);
       }
       bounceEase(cr.mesh, dt);
+    });
+    // 副本内容动画（副本可自带动画：group.userData.update = function(t){...}）
+    Object.keys(dungeonInstances).forEach(function (dn) {
+      var c = dungeonInstances[dn].content;
+      if (c && c.userData && c.userData.update) c.userData.update(t);
     });
     updatePasserby(dt);
     updateSnake(dt, t);
