@@ -260,29 +260,30 @@ function serve() {
 
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
 
-    // 隐藏作弊控制台（懂的都懂）：:wq 灵魂出体 / ] [ 0 变速 / q! 归位
+    // 隐藏作弊终端（懂的都懂）：ls 发现文件 → ./spirit.sh 灵魂出体 → 变速 → q! 归位
     await page.evaluate(() => { window.Game.player.position.set(0, 0, 0); window.Game.player.visible = true; });
-    await page.keyboard.press(':');
-    await sleep(200);
-    await page.keyboard.type('wq');
-    await page.keyboard.press('Enter');
-    await sleep(400);
+    const runCmd = async (cmd) => {
+      await page.keyboard.press(':');
+      await sleep(200);
+      await page.keyboard.type(cmd);
+      await page.keyboard.press('Enter');
+      await sleep(300);
+    };
+    await runCmd('ls');
+    const lsShows = await page.evaluate(() =>
+      document.getElementById('cheat-out').textContent.indexOf('spirit.sh') >= 0);
+    await runCmd('./spirit.sh');
     const spiritOn = await page.evaluate(() => window.Game.spirit() && !window.Game.player.visible);
     await page.keyboard.press(']');
-    await sleep(100);
     const ts2 = await page.evaluate(() => window.Game.timeScale());
     await page.keyboard.press('[');
     await page.keyboard.press('[');
     const ts05 = await page.evaluate(() => window.Game.timeScale());
     await page.keyboard.press('0');
     const ts1 = await page.evaluate(() => window.Game.timeScale());
-    await page.keyboard.press(':');
-    await sleep(200);
-    await page.keyboard.type('q!');
-    await page.keyboard.press('Enter');
-    await sleep(300);
+    await runCmd('q!');
     const spiritOff = await page.evaluate(() => !window.Game.spirit() && window.Game.player.visible);
-    results.cheat = spiritOn && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
+    results.cheat = lsShows && spiritOn && ts2 === 2 && ts05 === 0.5 && ts1 === 1 && spiritOff;
 
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });
     console.log('截图: /tmp/zhili_niu_smoke.png');
