@@ -190,22 +190,66 @@
   var keys = {};
   var codexOpen = false;
 
-  // ---- 隐藏作弊控制台（懂的都懂；输入像 sudo 密码一样被 * 遮蔽） ----
+  // ---- 隐藏作弊终端（懂的都懂；挂了个假文件系统，输入无回显像 sudo 密码） ----
   var cheatEl = document.getElementById('cheat-console');
+  var cheatOut = document.getElementById('cheat-out');
   var cheatInput = document.getElementById('cheat-input');
   var cheatOpen = false;
-  var spirit = false;          // 灵魂出体（wq）
-  var autoBoom = false;        // yes：无限哞
+  var spirit = false;          // 灵魂出体
+  var autoBoom = false;        // 无限哞
   var autoBoomT = 0;
   var timeScale = 1;           // 变速齿轮
   var gameT = 0;
   G.spirit = function () { return spirit; };
   G.timeScale = function () { return timeScale; };
 
+  // 假文件系统（作弊清单藏在里面，靠 ls 自己发现）
+  var CHEAT_HANDLERS = {};
+  function toggleSpirit() { spirit = !spirit; player.visible = !spirit; }
+  function toggleYes() { autoBoom = !autoBoom; }
+  function rmRf() {
+    window.Dialogue.toast('rm -rf /：你已删库跑路（存档清空，系统即将重启）');
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    setTimeout(function () { location.reload(); }, 900);
+  }
+  function npmInstall() {
+    var ov = document.createElement('div');
+    ov.id = 'npm-overlay';
+    ov.textContent = 'npm install…\n⠋ 正在安装 217 个依赖（其中 216 个用不上）';
+    document.body.appendChild(ov);
+    setTimeout(function () { ov.remove(); }, 3000);
+  }
+  function forcePush() { G.state.stand = 100; window.Dialogue.updateHud(); save(); }
+  function cycleSpeed() {
+    var seq = [1, 2, 4, 0.5, 0.25];
+    timeScale = seq[(seq.indexOf(timeScale) + 1) % seq.length];
+    cheatPrint('speed.conf：当前 ×' + timeScale);
+  }
+  var CHEAT_FILES = {
+    'spirit.sh':    { desc: '#!/bin/bash\n# 灵魂出体（肉身留在原地）\n# 用法：./spirit.sh', run: toggleSpirit },
+    'yes.bin':      { desc: '二进制：哞。', run: toggleYes },
+    'speed.conf':   { desc: '变速配置：当前 ×1（] 加速 / [ 减速 / 0 复位）', run: cycleSpeed },
+    'rm_rf.tar':    { desc: '⚠ 危险文件：删库跑路。', run: rmRf },
+    'npm.sh':       { desc: '#!/bin/bash\nnpm install\n# 会装上 217 个依赖（216 个用不上）', run: npmInstall },
+    'force_push.sh':{ desc: '#!/bin/bash\ngit push --force\n# 没人拦得住你。', run: forcePush },
+    'hint.txt':     { desc: '提示：cat 一下每个文件，看看它们是干嘛的。', run: function () { cheatPrint('提示：cat 一下每个文件，看看它们是干嘛的。'); } }
+  };
+
+  function cheatPrint(text) {
+    cheatOut.textContent += (cheatOut.textContent ? '\n' : '') + text;
+    cheatOut.scrollTop = cheatOut.scrollHeight;
+  }
+  function cheatLs() {
+    cheatPrint('总用量 42');
+    Object.keys(CHEAT_FILES).forEach(function (f) {
+      var size = (f.length * 13 + 128) % 900 + 128;
+      cheatPrint('-rwxr-xr-x 1 root root ' + size + ' 牛来 ' + f);
+    });
+  }
   function openCheat() {
     cheatOpen = true;
     cheatEl.classList.remove('hidden');
-    cheatInput.dataset.raw = '';
+    cheatOut.textContent = '';
     cheatInput.value = '';
     cheatInput.focus();
   }
@@ -214,57 +258,40 @@
     cheatEl.classList.add('hidden');
     cheatInput.blur();
   }
-  cheatInput.addEventListener('input', function () {
-    var raw = cheatInput.dataset.raw || '';
-    if (cheatInput.value.length > raw.length) raw += cheatInput.value.slice(raw.length);
-    else raw = raw.slice(0, cheatInput.value.length);
-    cheatInput.dataset.raw = raw;
-    cheatInput.value = '*'.repeat(raw.length); // sudo 密码式遮蔽
-  });
-  function setSpeed(v) {
-    timeScale = v;
-    var sh = document.getElementById('speed-hud');
-    if (timeScale === 1) sh.classList.add('hidden');
-    else { sh.classList.remove('hidden'); document.getElementById('speed-val').textContent = timeScale; }
-    var names = { 0.25: '降频到 0.25×（省电模式）', 0.5: '降频到 0.5×', 2: '超频到 2×', 4: '超频到 4×（风扇起飞）' };
-    window.Dialogue.toast(names[timeScale] || ('变速齿轮：' + timeScale + '×'));
-  }
-  function runCheat(cmd) {
-    cmd = (cmd || '').trim().toLowerCase();
-    if (!cmd) return;
-    if (cmd === 'wq') {
-      spirit = !spirit;
-      if (spirit) { player.visible = false; window.Dialogue.toast('灵魂出体（wq，懂的都懂）——WASD 飞，E/Q 上天入地'); }
-      else { player.visible = true; window.Dialogue.toast('灵魂归位'); }
-    } else if (cmd === 'q!') {
-      spirit = false; player.visible = true;
-      window.Dialogue.toast('q!：强制归位');
-    } else if (cmd === 'yes') {
-      autoBoom = !autoBoom;
-      window.Dialogue.toast(autoBoom ? 'yes：无限哞（终端压力拉满）' : 'yes：已停止');
-    } else if (cmd === 'sudo rm -rf /' || cmd === 'rm -rf /') {
-      window.Dialogue.toast('rm -rf /：你已删库跑路（存档清空，系统即将重启）');
-      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-      setTimeout(function () { location.reload(); }, 900);
-    } else if (cmd === 'npm install') {
-      var ov = document.createElement('div');
-      ov.id = 'npm-overlay';
-      ov.textContent = 'npm install…\n⠋ 正在安装 217 个依赖（其中 216 个用不上）';
-      document.body.appendChild(ov);
-      setTimeout(function () { ov.remove(); }, 3000);
-    } else if (cmd === 'git push --force') {
-      G.state.stand = 100;
-      window.Dialogue.toast('强推成功（--force，没人拦得住你）');
-      window.Dialogue.updateHud();
-      save();
-    } else {
-      window.Dialogue.toast('"' + cmd + '" 不是命令。（提示：懂的都懂）');
+  function setSpeed(v) { timeScale = v; }   // 变速静默生效
+  function runCheat() {
+    var c = (cheatInput.value || '').trim();
+    var lc = c.toLowerCase();
+    if (!c) return;
+    if (lc === 'ls' || lc === 'ls -la') { cheatLs(); return; }
+    if (lc === 'pwd') { cheatPrint('/home/niulai'); return; }
+    if (lc === 'cd' || lc === 'cd /') { cheatPrint('已进入根目录（别乱删）'); return; }
+    if (lc === 'cd ..') { cheatPrint('向上一步：宇宙'); return; }
+    if (lc.indexOf('cat ') === 0) {
+      var cf = c.slice(4).trim();
+      if (CHEAT_FILES[cf]) cheatPrint(CHEAT_FILES[cf].desc);
+      else cheatPrint('cat: ' + cf + ': 没有那个文件');
+      return;
     }
+    if (lc.indexOf('./') === 0 || lc.indexOf('sh ') === 0) {
+      var ef = lc.indexOf('./') === 0 ? c.slice(2).trim() : c.slice(3).trim();
+      if (!CHEAT_FILES[ef]) { cheatPrint('bash: ' + c + ': 没有那个文件或目录'); return; }
+      CHEAT_FILES[ef].run();
+      return;
+    }
+    // 直接命令（vim 派 / 系统派都兼容）
+    if (lc === 'wq') { toggleSpirit(); return; }
+    if (lc === 'q!') { spirit = false; player.visible = true; return; }
+    if (lc === 'yes') { toggleYes(); return; }
+    if (lc === 'sudo rm -rf /' || lc === 'rm -rf /') { rmRf(); return; }
+    if (lc === 'npm install') { npmInstall(); return; }
+    if (lc === 'git push --force') { forcePush(); return; }
+    cheatPrint('bash: ' + c + ': 未找到命令（提示：试试 ls）');
   }
 
   window.addEventListener('keydown', function (e) {
     if (cheatOpen) {
-      if (e.key === 'Enter') { runCheat(cheatInput.dataset.raw); closeCheat(); }
+      if (e.key === 'Enter') { runCheat(); closeCheat(); }
       else if (e.key === 'Escape') closeCheat();
       return; // 控制台打开时忽略游戏键
     }
