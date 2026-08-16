@@ -189,9 +189,93 @@
   /* ---------------- 输入 ---------------- */
   var keys = {};
   var codexOpen = false;
+
+  // ---- 隐藏作弊控制台（懂的都懂；输入像 sudo 密码一样被 * 遮蔽） ----
+  var cheatEl = document.getElementById('cheat-console');
+  var cheatInput = document.getElementById('cheat-input');
+  var cheatOpen = false;
+  var spirit = false;          // 灵魂出体（wq）
+  var autoBoom = false;        // yes：无限哞
+  var autoBoomT = 0;
+  var timeScale = 1;           // 变速齿轮
+  var gameT = 0;
+  G.spirit = function () { return spirit; };
+  G.timeScale = function () { return timeScale; };
+
+  function openCheat() {
+    cheatOpen = true;
+    cheatEl.classList.remove('hidden');
+    cheatInput.dataset.raw = '';
+    cheatInput.value = '';
+    cheatInput.focus();
+  }
+  function closeCheat() {
+    cheatOpen = false;
+    cheatEl.classList.add('hidden');
+    cheatInput.blur();
+  }
+  cheatInput.addEventListener('input', function () {
+    var raw = cheatInput.dataset.raw || '';
+    if (cheatInput.value.length > raw.length) raw += cheatInput.value.slice(raw.length);
+    else raw = raw.slice(0, cheatInput.value.length);
+    cheatInput.dataset.raw = raw;
+    cheatInput.value = '*'.repeat(raw.length); // sudo 密码式遮蔽
+  });
+  function setSpeed(v) {
+    timeScale = v;
+    var sh = document.getElementById('speed-hud');
+    if (timeScale === 1) sh.classList.add('hidden');
+    else { sh.classList.remove('hidden'); document.getElementById('speed-val').textContent = timeScale; }
+    var names = { 0.25: '降频到 0.25×（省电模式）', 0.5: '降频到 0.5×', 2: '超频到 2×', 4: '超频到 4×（风扇起飞）' };
+    window.Dialogue.toast(names[timeScale] || ('变速齿轮：' + timeScale + '×'));
+  }
+  function runCheat(cmd) {
+    cmd = (cmd || '').trim().toLowerCase();
+    if (!cmd) return;
+    if (cmd === 'wq') {
+      spirit = !spirit;
+      if (spirit) { player.visible = false; window.Dialogue.toast('灵魂出体（wq，懂的都懂）——WASD 飞，E/Q 上天入地'); }
+      else { player.visible = true; window.Dialogue.toast('灵魂归位'); }
+    } else if (cmd === 'q!') {
+      spirit = false; player.visible = true;
+      window.Dialogue.toast('q!：强制归位');
+    } else if (cmd === 'yes') {
+      autoBoom = !autoBoom;
+      window.Dialogue.toast(autoBoom ? 'yes：无限哞（终端压力拉满）' : 'yes：已停止');
+    } else if (cmd === 'sudo rm -rf /' || cmd === 'rm -rf /') {
+      window.Dialogue.toast('rm -rf /：你已删库跑路（存档清空，系统即将重启）');
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      setTimeout(function () { location.reload(); }, 900);
+    } else if (cmd === 'npm install') {
+      var ov = document.createElement('div');
+      ov.id = 'npm-overlay';
+      ov.textContent = 'npm install…\n⠋ 正在安装 217 个依赖（其中 216 个用不上）';
+      document.body.appendChild(ov);
+      setTimeout(function () { ov.remove(); }, 3000);
+    } else if (cmd === 'git push --force') {
+      G.state.stand = 100;
+      window.Dialogue.toast('强推成功（--force，没人拦得住你）');
+      window.Dialogue.updateHud();
+      save();
+    } else {
+      window.Dialogue.toast('"' + cmd + '" 不是命令。（提示：懂的都懂）');
+    }
+  }
+
   window.addEventListener('keydown', function (e) {
+    if (cheatOpen) {
+      if (e.key === 'Enter') { runCheat(cheatInput.dataset.raw); closeCheat(); }
+      else if (e.key === 'Escape') closeCheat();
+      return; // 控制台打开时忽略游戏键
+    }
     if (['Tab', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) >= 0) e.preventDefault();
     keys[e.key.toLowerCase()] = true;
+    // 变速齿轮（隐藏键）
+    if (e.key === ']' || e.key === '}') setSpeed(Math.min(4, timeScale * 2));
+    if (e.key === '[' || e.key === '{') setSpeed(Math.max(0.25, timeScale / 2));
+    if (e.key === '0') setSpeed(1);
+    // 隐藏控制台
+    if (e.key === ':') { e.preventDefault(); openCheat(); return; }
     if (e.key === 'e' || e.key === 'E' || e.key === ' ') {
       if (window.Dialogue.isActive()) window.Dialogue.advance();
       else interact();
@@ -483,13 +567,15 @@
 
   function loop() {
     requestAnimationFrame(loop);
-    var dt = Math.min(clock.getDelta(), 0.05);
-    var t = clock.elapsedTime;
-    var canMove = updatePhysics(dt, t) && !window.Dialogue.isActive() && !window.Dialogue.codexOpen() && !window.TicketUI.isOpen() && snakeState.seqT < 0;
+    var rawDt = Math.min(clock.getDelta(), 0.05);
+    var dt = Math.min(rawDt * timeScale, 0.1);   // 变速齿轮（] 加速 / [ 减速 / 0 恢复）
+    gameT += dt;
+    var t = gameT;
+    var canMove = updatePhysics(dt, t) && !window.Dialogue.isActive() && !window.Dialogue.codexOpen() && !window.TicketUI.isOpen() && snakeState.seqT < 0 && !spirit;
 
     // 移动：镜头相对（W=往屏幕里走，A=屏幕左，D=屏幕右）
     var ix = 0, iz = 0;
-    if (canMove) {
+    if (!cheatOpen) {
       if (keys['w'] || keys['arrowup']) iz += 1;
       if (keys['s'] || keys['arrowdown']) iz -= 1;
       if (keys['a'] || keys['arrowleft']) ix -= 1;
@@ -501,6 +587,28 @@
     var rgt = new THREE.Vector3(-Math.cos(camYaw), 0, Math.sin(camYaw));
     var move = new THREE.Vector3().addScaledVector(fwd, iz).addScaledVector(rgt, ix);
     var moving = move.lengthSq() > 0;
+
+    // 灵魂出体（wq）：自由飞行，上天入地
+    if (spirit) {
+      player.visible = false;
+      var fdir = new THREE.Vector3().addScaledVector(fwd, iz).addScaledVector(rgt, ix);
+      if (keys['e'] || keys['E']) fdir.y += 1;   // 上升
+      if (keys['q'] || keys['Q']) fdir.y -= 1;   // 下降
+      if (fdir.lengthSq() > 0) {
+        fdir.normalize();
+        G.camera.position.addScaledVector(fdir, 7 * dt);  // 不受边界限制，能飞出地图
+      }
+      G.camera.lookAt(
+        G.camera.position.x + Math.sin(camYaw) * 10,
+        G.camera.position.y,
+        G.camera.position.z + Math.cos(camYaw) * 10
+      );
+      world.update(t);
+      window.Dialogue.update();
+      G.renderer.render(G.scene, G.camera);
+      return; // 灵魂模式跳过常规逻辑
+    }
+
     if (moving) {
       move.normalize();
       var maxSpeed = 3.4 * (1 + Math.sin(t * 0.7) * wobbleAmp); // 微弱速度波动（保留一点糙）
@@ -520,6 +628,12 @@
     // 边界（东边通向 K 线交易场，可走更远）
     player.position.x = Math.max(-B, Math.min(B + 36, player.position.x));
     player.position.z = Math.max(-B, Math.min(B, player.position.z));
+
+    // yes：无限哞（终端压力）
+    if (autoBoom) {
+      autoBoomT -= dt;
+      if (autoBoomT <= 0) { autoBoomT = 0.7; window.AudioSys.boom(); }
+    }
 
     // 动画
     player.userData.update(t, moving, 2.2);
