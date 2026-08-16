@@ -67,6 +67,16 @@ function serve() {
     const z1 = await page.evaluate(() => window.Game.player.position.z);
     results.move = Math.abs(z1 - z0) > 0.5;
 
+    // 方向核对（修复 A/D 反了）：A=屏幕左(+x)、D=屏幕右(-x)
+    await page.evaluate(() => { window.Game.player.position.set(0, 0, 0); window.Game.camera.position.set(0, 1.0, -6.5); });
+    await sleep(300);
+    const p0 = await page.evaluate(() => ({ x: window.Game.player.position.x, z: window.Game.player.position.z }));
+    await page.keyboard.down('a');
+    await sleep(80);   // 短按：测初始方向（视角跟随会让长按变成左转画圈）
+    const p1 = await page.evaluate(() => ({ x: window.Game.player.position.x, z: window.Game.player.position.z }));
+    await page.keyboard.up('a');
+    results.keysDir = (p1.x - p0.x) > 0.05;
+
     async function talkWith(px, pz) {
       await page.evaluate(([x, z]) => { window.Game.player.position.set(x, 0, z); }, [px, pz]);
       await sleep(300);
@@ -234,6 +244,20 @@ function serve() {
     }
     await sleep(800);
     results.hidden = hiddenVisible && await page.evaluate(() => window.Game.state.cards.indexOf('haqimiao') >= 0);
+
+    // 结局：站立值 100 + 全卡 + 4 票根 → 牛市来了
+    await page.evaluate(() => {
+      const G = window.Game;
+      G.state.stand = 100;
+      G.state.cards = window.Data.CARDS.map(function (c) { return c.id; });
+      G.state.stubs = [0, 1, 2, 3];
+    });
+    await sleep(1500);
+    results.ending = await page.evaluate(() => {
+      const el = document.getElementById('ending');
+      return !el.classList.contains('hidden') && document.getElementById('ending-title').textContent === '牛市来了';
+    });
+
     results.stand = await page.evaluate(() => window.Game.state.stand >= 18);
     await page.screenshot({ path: '/tmp/zhili_niu_smoke.png' });
     console.log('截图: /tmp/zhili_niu_smoke.png');

@@ -38,6 +38,7 @@
     G.state.milk = G.state.milk || 0;
     G.state.xiugouTalked = G.state.xiugouTalked || false;
     G.state.seatFixed = G.state.seatFixed || false;
+    G.state.endingShown = G.state.endingShown || false;
   }
   function save() {
     try {
@@ -150,6 +151,40 @@
       });
     }
   }, 400);
+
+  /* ---------------- 结局系统（站立值 100 → 站起来 / 牛市来了） ---------------- */
+  var endingShown = false;
+  function showEnding(title, text) {
+    if (endingShown) return;
+    endingShown = true;
+    G.state.endingShown = true;
+    save();
+    document.getElementById('ending-title').textContent = title;
+    document.getElementById('ending-text').textContent = text;
+    document.getElementById('ending').classList.remove('hidden');
+    window.Dialogue.updateHud();
+    // 全平原"哞"声合唱
+    window.AudioSys.boom();
+    setTimeout(function () { window.AudioSys.boom(); }, 250);
+    setTimeout(function () { window.AudioSys.boom(); }, 500);
+    setTimeout(function () { window.AudioSys.boom(); }, 750);
+  }
+  setInterval(function () {
+    if (endingShown) return;
+    if (G.state.endingShown) { endingShown = true; return; }
+    if (G.state.stand < 100) return;
+    var allCards = window.Data.CARDS.every(function (c) { return G.state.cards.indexOf(c.id) >= 0; });
+    var allStubs = (G.state.stubs || []).length >= 4;
+    if (allCards && allStubs) {
+      showEnding('牛市来了', '牛来站起来的瞬间，K 线交易场所有柱子变红，钟声响起。\n那一天，平原上所有牛都说：牛来了。\n\n本文纯属虚构，投资需谨慎。');
+    } else {
+      showEnding('站起来了', '牛来第一次用后腿站立，整个平原的牛都停下看它。\n那一天，平原上所有牛都说：牛来了。');
+    }
+  }, 500);
+  document.getElementById('ending-restart').addEventListener('click', function () {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    location.reload();
+  });
 
   /* ---------------- 输入 ---------------- */
   var keys = {};
@@ -461,9 +496,9 @@
       if (keys['d'] || keys['arrowright']) ix += 1;
       if (G.touchInput) { ix += G.touchInput.x; iz += G.touchInput.z; } // 手机摇杆
     }
-    // 相机相对方向向量
+    // 相机相对方向向量（屏幕右 = fwd × up，已核对：A=屏幕左 / D=屏幕右）
     var fwd = new THREE.Vector3(Math.sin(camYaw), 0, Math.cos(camYaw));
-    var rgt = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
+    var rgt = new THREE.Vector3(-Math.cos(camYaw), 0, Math.sin(camYaw));
     var move = new THREE.Vector3().addScaledVector(fwd, iz).addScaledVector(rgt, ix);
     var moving = move.lengthSq() > 0;
     if (moving) {
